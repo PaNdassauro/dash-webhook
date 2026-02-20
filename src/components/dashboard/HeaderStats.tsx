@@ -12,33 +12,33 @@ export function HeaderStats({ selectedMonth, lastUpdate }: HeaderStatsProps) {
   const endDate = new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0)
 
   return (
-    <div className="bg-primary text-white rounded-t-lg">
-      <div className="text-center py-2 text-2xl font-bold border-b border-primary-dark">
+    <div className="header-banner">
+      <div className="header-banner-title">
         {monthName}
       </div>
-      <div className="grid grid-cols-6 text-sm">
-        <div className="border-r border-primary-dark p-2">
-          <div className="text-primary-light text-xs">Dias do Mês</div>
-          <div className="font-semibold">{daysInMonth}</div>
+      <div className="grid grid-cols-3 md:grid-cols-6 text-sm">
+        <div className="header-stat-cell">
+          <div className="header-stat-label">Dias do Mês</div>
+          <div className="header-stat-value">{daysInMonth}</div>
         </div>
-        <div className="border-r border-primary-dark p-2">
-          <div className="text-primary-light text-xs">Data de Hoje</div>
-          <div className="font-semibold">{formatDatePtBR(new Date())}</div>
+        <div className="header-stat-cell">
+          <div className="header-stat-label">Data de Hoje</div>
+          <div className="header-stat-value">{formatDatePtBR(new Date())}</div>
         </div>
-        <div className="border-r border-primary-dark p-2">
-          <div className="text-primary-light text-xs">Data início</div>
-          <div className="font-semibold">{formatDatePtBR(startDate)}</div>
+        <div className="header-stat-cell">
+          <div className="header-stat-label">Data início</div>
+          <div className="header-stat-value">{formatDatePtBR(startDate)}</div>
         </div>
-        <div className="border-r border-primary-dark p-2">
-          <div className="text-primary-light text-xs">Data fim</div>
-          <div className="font-semibold">{formatDatePtBR(endDate)}</div>
+        <div className="header-stat-cell">
+          <div className="header-stat-label">Data fim</div>
+          <div className="header-stat-value">{formatDatePtBR(endDate)}</div>
         </div>
-        <div className="border-r border-primary-dark p-2">
-          <div className="text-primary-light text-xs">Data Atualização</div>
-          <div className="font-semibold">{formatDatePtBR(lastUpdate)}</div>
+        <div className="header-stat-cell">
+          <div className="header-stat-label">Data Atualização</div>
+          <div className="header-stat-value">{formatDatePtBR(lastUpdate)}</div>
         </div>
-        <div className="p-2">
-          <div className="text-primary-light text-xs">&nbsp;</div>
+        <div className="header-stat-cell">
+          <div className="header-stat-label">&nbsp;</div>
           <div>&nbsp;</div>
         </div>
       </div>

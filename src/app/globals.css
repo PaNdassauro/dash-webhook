@@ -2,64 +2,542 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   WEDDING LUXURY DESIGN SYSTEM
+   Elegant, minimalist theme for wedding sales dashboard.
+   ============================================================ */
+
+/* ── CSS Custom Properties ─────────────────────────────────── */
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-rgb: 245, 245, 245;
+  /* Background */
+  --bg-base: #F9F7F2;
+  --bg-surface: #FFFFFF;
+  --bg-surface-alt: #F5F3EE;
+
+  /* Wedding Gold */
+  --gold: #C5A059;
+  --gold-dark: #A68A3C;
+  --gold-light: #D4B978;
+  --gold-bg: rgba(197, 160, 89, 0.08);
+
+  /* Text */
+  --text-primary: #2D2D2D;
+  --text-secondary: #6B6B6B;
+  --text-muted: #9B9B9B;
+
+  /* Borders */
+  --border-light: #E8E6E1;
+  --border-gold: #C5A059;
+
+  /* Semantic (pastel) */
+  --success: #7CB77B;
+  --success-bg: #E8F5E8;
+  --warning: #E8A87C;
+  --warning-bg: #FFF4E8;
+  --danger: #D4848C;
+  --danger-bg: #FFE8EA;
+
+  /* Radius */
+  --radius: 8px;
+}
+
+/* ── Base Styles ───────────────────────────────────────────── */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  color: rgb(var(--foreground-rgb));
-  background: rgb(var(--background-rgb));
+  background: var(--bg-base);
+  color: var(--text-primary);
+  min-height: 100vh;
 }
 
-/* Dashboard table styles */
-.funnel-table {
-  @apply w-full border-collapse text-sm;
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
 
-.funnel-table th,
-.funnel-table td {
-  @apply border border-gray-300 px-3 py-2 text-center;
+/* ── Scrollbar ─────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 
-.funnel-table th {
-  @apply bg-primary text-white font-semibold;
+::-webkit-scrollbar-track {
+  background: var(--bg-surface-alt);
 }
 
-.funnel-table .row-planejado {
-  @apply bg-gray-100;
+::-webkit-scrollbar-thumb {
+  background: var(--border-light);
+  border-radius: 3px;
 }
 
-.funnel-table .row-realizado {
-  @apply bg-white font-semibold;
+::-webkit-scrollbar-thumb:hover {
+  background: var(--gold);
 }
 
-.funnel-table .row-atingimento {
-  @apply bg-pink-50;
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-light) var(--bg-surface-alt);
 }
 
-.funnel-table .row-deveria {
-  @apply bg-gray-50;
+/* ── Focus & Selection ─────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: var(--radius);
 }
 
-.funnel-table .row-periodo-anterior-pct {
-  @apply bg-gray-100;
+::selection {
+  background: rgba(197, 160, 89, 0.2);
+  color: var(--text-primary);
 }
 
-.funnel-table .row-periodo-anterior {
-  @apply bg-gray-50;
+/* ============================================================
+   COMPONENTS
+   ============================================================ */
+@layer components {
+
+  /* ── Dashboard Shell ────────────────────────────────────── */
+  .dash-page {
+    @apply min-h-screen p-4 md:p-6;
+    background: var(--bg-base);
+  }
+
+  .dash-container {
+    @apply max-w-[1600px] mx-auto;
+  }
+
+  .dash-header {
+    @apply flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6;
+  }
+
+  .dash-title {
+    @apply text-2xl font-bold font-serif;
+    color: var(--text-primary);
+  }
+
+  /* ── Cards ────────────────────────────────────────────────── */
+  .glass-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-gold);
+    border-radius: var(--radius);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  }
+
+  /* ── KPI Card ───────────────────────────────────────────── */
+  .kpi-card {
+    @apply p-5 relative;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-gold);
+    border-radius: var(--radius);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+  }
+
+  .kpi-card:hover {
+    box-shadow: 0 4px 16px rgba(197, 160, 89, 0.15);
+    transform: translateY(-1px);
+  }
+
+  .kpi-card::after {
+    content: '';
+    @apply absolute top-0 left-0 w-1 h-full;
+    background: var(--gold);
+    border-radius: var(--radius) 0 0 var(--radius);
+  }
+
+  .kpi-label {
+    @apply text-sm font-medium mb-1;
+    color: var(--text-secondary);
+  }
+
+  .kpi-value {
+    @apply text-2xl font-bold;
+    color: var(--gold-dark);
+  }
+
+  /* ── Funnel Table ───────────────────────────────────────── */
+  .funnel-table {
+    @apply w-full border-collapse text-sm;
+  }
+
+  .funnel-table th,
+  .funnel-table td {
+    @apply px-3 py-2.5 text-center;
+    border: 1px solid var(--border-light);
+    transition: background-color 0.15s ease;
+  }
+
+  .funnel-table th {
+    @apply font-semibold text-xs uppercase tracking-wider;
+    background: var(--gold);
+    color: #FFFFFF;
+  }
+
+  /* Row variants */
+  .funnel-table .row-planejado {
+    background: var(--bg-surface);
+  }
+
+  .funnel-table .row-realizado {
+    @apply font-semibold;
+    background: var(--gold-bg);
+  }
+
+  .funnel-table .row-atingimento {
+    background: var(--bg-surface-alt);
+  }
+
+  .funnel-table .row-deveria {
+    background: var(--bg-surface);
+  }
+
+  .funnel-table .row-periodo-anterior-pct {
+    background: var(--bg-surface-alt);
+  }
+
+  .funnel-table .row-periodo-anterior {
+    background: var(--bg-surface);
+  }
+
+  .funnel-table .row-custos {
+    background: var(--warning-bg);
+  }
+
+  .funnel-table .row-label {
+    @apply font-semibold text-left whitespace-nowrap;
+    background: var(--bg-surface-alt);
+    color: var(--text-primary);
+  }
+
+  /* ── Positive / Negative value coloring ─────────────────── */
+  .negative {
+    @apply font-medium;
+    color: var(--danger);
+  }
+
+  .positive {
+    @apply font-medium;
+    color: var(--success);
+  }
+
+  /* ── Clickable table cells ──────────────────────────────── */
+  .cell-clickable {
+    @apply cursor-pointer;
+    transition: background-color 0.15s ease;
+  }
+
+  .cell-clickable:hover {
+    background: var(--gold-bg);
+    color: var(--gold-dark);
+  }
+
+  /* ── View Toggle Pills ──────────────────────────────────── */
+  .view-toggle {
+    @apply flex rounded-lg overflow-hidden;
+    border: 1px solid var(--border-light);
+    background: var(--bg-surface);
+  }
+
+  .view-toggle-btn {
+    @apply px-5 py-2.5 font-medium text-sm;
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+  }
+
+  .view-toggle-btn:hover {
+    color: var(--gold-dark);
+    background: var(--gold-bg);
+  }
+
+  .view-toggle-btn-active {
+    @apply px-5 py-2.5 font-medium text-sm;
+    background: var(--gold);
+    color: #FFFFFF;
+  }
+
+  /* ── Selects ────────────────────────────────────────────── */
+  .neon-select {
+    @apply px-4 py-2.5 rounded-lg text-sm font-medium cursor-pointer;
+    border: 1px solid var(--border-light);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    transition: all 0.2s ease;
+  }
+
+  .neon-select:hover {
+    border-color: var(--gold);
+  }
+
+  .neon-select:focus {
+    outline: none;
+    border-color: var(--gold);
+    box-shadow: 0 0 0 2px rgba(197, 160, 89, 0.2);
+  }
+
+  /* ── Modal ──────────────────────────────────────────────── */
+  .modal-backdrop {
+    @apply fixed inset-0 z-50 flex items-center justify-center p-4;
+    background: rgba(45, 45, 45, 0.5);
+    backdrop-filter: blur(4px);
+    animation: fade-in 0.2s ease-out;
+  }
+
+  .modal-content {
+    @apply w-full max-w-4xl max-h-[80vh] flex flex-col;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-gold);
+    border-radius: var(--radius);
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15);
+    animation: slide-up 0.3s ease-out;
+  }
+
+  .modal-header {
+    @apply flex justify-between items-center p-5;
+    border-bottom: 1px solid var(--border-light);
+  }
+
+  .modal-title {
+    @apply text-xl font-bold font-serif;
+    color: var(--text-primary);
+  }
+
+  .modal-close {
+    @apply w-8 h-8 flex items-center justify-center rounded-lg text-xl font-bold;
+    color: var(--text-muted);
+    transition: all 0.2s ease;
+  }
+
+  .modal-close:hover {
+    color: var(--danger);
+    background: var(--danger-bg);
+  }
+
+  .modal-search {
+    @apply w-full px-4 py-3 rounded-lg text-sm;
+    border: 1px solid var(--border-light);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    transition: all 0.2s ease;
+  }
+
+  .modal-search::placeholder {
+    color: var(--text-muted);
+  }
+
+  .modal-search:focus {
+    outline: none;
+    border-color: var(--gold);
+    box-shadow: 0 0 0 2px rgba(197, 160, 89, 0.2);
+  }
+
+  .modal-table {
+    table-layout: fixed;
+    width: 100%;
+  }
+
+  .modal-table thead {
+    @apply sticky top-0 z-10;
+    background: var(--bg-surface-alt);
+  }
+
+  .modal-table th {
+    @apply text-left p-3 text-xs uppercase tracking-wider font-semibold;
+    color: var(--text-secondary);
+  }
+
+  .modal-table th:nth-child(1) { width: 70px; }   /* ID */
+  .modal-table th:nth-child(2) { width: 30%; }    /* Título */
+  .modal-table th:nth-child(3) { width: 15%; }    /* Pipeline */
+  .modal-table th:nth-child(4) { width: 20%; }    /* Stage */
+  .modal-table th:nth-child(5) { width: 80px; }   /* Status */
+  .modal-table th:nth-child(6) { width: 100px; }  /* Criado */
+
+  .modal-table td {
+    @apply p-3 text-sm;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .modal-table tbody tr {
+    border-bottom: 1px solid var(--border-light);
+    transition: background-color 0.15s ease;
+  }
+
+  .modal-table tbody tr:hover {
+    background: var(--gold-bg);
+  }
+
+  /* ── Status Badges ──────────────────────────────────────── */
+  .badge-won {
+    @apply px-2.5 py-1 rounded-full text-xs font-medium;
+    background: var(--success-bg);
+    color: var(--success);
+    border: 1px solid var(--success);
+  }
+
+  .badge-lost {
+    @apply px-2.5 py-1 rounded-full text-xs font-medium;
+    background: var(--danger-bg);
+    color: var(--danger);
+    border: 1px solid var(--danger);
+  }
+
+  .badge-open {
+    @apply px-2.5 py-1 rounded-full text-xs font-medium;
+    background: var(--warning-bg);
+    color: var(--warning);
+    border: 1px solid var(--warning);
+  }
+
+  /* ── Loading ────────────────────────────────────────────── */
+  .loading-text {
+    @apply text-center py-8;
+    color: var(--text-muted);
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* ── Score Display ──────────────────────────────────────── */
+  .score-display {
+    @apply p-6 text-center;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-gold);
+    border-radius: var(--radius);
+  }
+
+  .score-value {
+    @apply text-6xl font-bold;
+    color: var(--gold-dark);
+  }
+
+  .score-label {
+    @apply text-sm mt-2;
+    color: var(--text-secondary);
+  }
+
+  /* ── Metric Cards ─────────────────────────────────────────── */
+  .metric-card {
+    @apply p-4 rounded-lg text-center;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-light);
+    transition: all 0.2s ease;
+  }
+
+  .metric-card:hover {
+    border-color: var(--gold);
+    box-shadow: 0 4px 12px rgba(197, 160, 89, 0.15);
+  }
+
+  .metric-card-label {
+    @apply text-xs uppercase tracking-wider font-medium mb-2;
+    color: var(--text-muted);
+  }
+
+  .metric-card-value {
+    @apply text-2xl font-bold;
+    color: var(--text-primary);
+  }
+
+  .metric-card-target {
+    @apply text-xs mt-1;
+    color: var(--text-secondary);
+  }
+
+  /* ── CVR Flow ─────────────────────────────────────────────── */
+  .cvr-flow {
+    @apply p-4 rounded-lg;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-light);
+  }
+
+  .cvr-flow-title {
+    @apply text-sm font-semibold mb-4;
+    color: var(--text-secondary);
+  }
+
+  .cvr-flow-cards {
+    @apply flex gap-2 overflow-x-auto pb-2;
+  }
+
+  .cvr-card {
+    @apply flex-1 min-w-[120px] p-3 rounded-lg text-center;
+    background: var(--bg-surface-alt);
+    border: 1px solid var(--border-light);
+    transition: all 0.2s ease;
+  }
+
+  .cvr-card:hover {
+    border-color: var(--gold);
+    transform: translateY(-2px);
+  }
+
+  .cvr-card-label {
+    @apply text-[10px] uppercase tracking-wider font-medium mb-1;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  .cvr-card-value {
+    @apply text-xl font-bold;
+  }
+
+  .cvr-card-meta {
+    @apply flex items-center justify-center gap-2 mt-1;
+  }
+
+  .cvr-card-target {
+    @apply text-[10px];
+    color: var(--text-muted);
+  }
+
+  .cvr-card-diff {
+    @apply text-[10px] font-medium;
+  }
+
+  .text-success {
+    color: var(--success);
+  }
+
+  .text-danger {
+    color: var(--danger);
+  }
+
+  /* ── Header Banner (simplified for month title only) ────── */
+  .header-banner {
+    @apply rounded-t-lg overflow-hidden;
+    background: linear-gradient(135deg, var(--gold), var(--gold-light));
+  }
+
+  .header-banner-title {
+    @apply text-center py-4 text-xl font-bold tracking-wide font-serif;
+    color: #FFFFFF;
+  }
 }
 
-.funnel-table .row-custos {
-  @apply bg-gray-100;
+/* ── Animations ────────────────────────────────────────────── */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-/* Negative values */
-.negative {
-  @apply text-red-600;
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-/* Positive values */
-.positive {
-  @apply text-green-600;
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@layer utilities {
+  .animate-fade-in { animation: fade-in 0.3s ease-out; }
+  .animate-slide-up { animation: slide-up 0.3s ease-out; }
 }

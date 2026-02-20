@@ -5,7 +5,6 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import {
   FunnelTable,
   KPICards,
-  HeaderStats,
   MonthSelector,
   ViewToggle,
 } from '@/components/dashboard'
@@ -15,6 +14,7 @@ import {
   calculateFunnelMetrics,
   fetchMonthlyTarget,
   fetchPreviousMonthMetrics,
+  fetchVendasForMonth,
 } from '@/lib/queries'
 import type { FunnelMetrics, MonthlyTarget } from '@/lib/types'
 
@@ -33,7 +33,6 @@ function WeddingDashboardContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  // Get month from URL or default to current
   const urlYear = searchParams.get('year')
   const urlMonth = searchParams.get('month')
   const [selectedYear, setSelectedYear] = useState(
@@ -48,8 +47,7 @@ function WeddingDashboardContent() {
   const [loading, setLoading] = useState(true)
   const [deals, setDeals] = useState<import('@/lib/types').Deal[]>([])
 
-  const selectedDate = new Date(selectedYear, selectedMonth - 1, 1)
-  const monthProgress = getMonthProgress(new Date())
+  const monthProgress = getMonthProgress(selectedYear, selectedMonth)
   const resultProgress = target
     ? calcAchievement(metrics.vendas, target.vendas)
     : 0
@@ -57,14 +55,23 @@ function WeddingDashboardContent() {
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      const [fetchedDeals, targetData, prevMetrics] = await Promise.all([
+      const [fetchedDeals, targetData, prevMetrics, vendasData] = await Promise.all([
         fetchDealsForMonth(selectedYear, selectedMonth, 'wedding'),
         fetchMonthlyTarget(selectedYear, selectedMonth, 'wedding'),
         fetchPreviousMonthMetrics(selectedYear, selectedMonth, 'wedding'),
+        fetchVendasForMonth(selectedYear, selectedMonth, 'wedding'),
       ])
 
-      setDeals(fetchedDeals)
-      setMetrics(calculateFunnelMetrics(fetchedDeals, selectedYear, selectedMonth))
+      // Combine deals: created_at deals + vendas deals (deduplicated)
+      const allDeals = [
+        ...fetchedDeals,
+        ...vendasData.deals.filter(d => !fetchedDeals.some(fd => fd.id === d.id))
+      ]
+      setDeals(allDeals)
+
+      // Calculate metrics using allDeals (includes deals closed in month)
+      const baseMetrics = calculateFunnelMetrics(allDeals, selectedYear, selectedMonth)
+      setMetrics({ ...baseMetrics, vendas: vendasData.count })
       setTarget(targetData)
       setPreviousMetrics(prevMetrics)
     } catch (error) {
@@ -81,19 +88,20 @@ function WeddingDashboardContent() {
   const handleMonthChange = (year: number, month: number) => {
     setSelectedYear(year)
     setSelectedMonth(month)
-    // Update URL with new month
     router.push(`/wedding?year=${year}&month=${month}`, { scroll: false })
   }
 
   return (
-    <main className="min-h-screen p-6 bg-gray-100">
-      <div className="max-w-[1600px] mx-auto">
+    <main className="dash-page">
+      <div className="dash-container">
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">
-            Dashboard - Welcome Weddings
-          </h1>
-          <div className="flex gap-4 items-center">
+        <div className="dash-header">
+          <div className="flex items-center gap-3">
+            <h1 className="dash-title">
+              Dashboard — Welcome Weddings
+            </h1>
+          </div>
+          <div className="flex gap-3 items-center">
             <MonthSelector
               selectedYear={selectedYear}
               selectedMonth={selectedMonth}
@@ -107,18 +115,14 @@ function WeddingDashboardContent() {
         <KPICards
           monthProgress={monthProgress}
           resultProgress={resultProgress}
-          investment={15667.30} // Mock value
+          investment={15667.30}
         />
 
         {/* Dashboard Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <HeaderStats
-            selectedMonth={selectedDate}
-            lastUpdate={new Date()}
-          />
+        <div className="glass-card overflow-hidden">
           <div className="p-4">
             {loading ? (
-              <div className="text-center py-8 text-gray-500">
+              <div className="loading-text">
                 Carregando dados...
               </div>
             ) : (
@@ -127,7 +131,7 @@ function WeddingDashboardContent() {
                 target={target}
                 previousMetrics={previousMetrics}
                 monthProgress={monthProgress}
-                cpl={43.76} // Mock CPL
+                cpl={43.76}
                 deals={deals}
                 year={selectedYear}
                 month={selectedMonth}
@@ -142,7 +146,7 @@ function WeddingDashboardContent() {
 
 export default function WeddingDashboard() {
   return (
-    <Suspense fallback={<div className="min-h-screen p-6 bg-gray-100 flex items-center justify-center">Carregando...</div>}>
+    <Suspense fallback={<div className="dash-page flex items-center justify-center loading-text">Carregando...</div>}>
       <WeddingDashboardContent />
     </Suspense>
   )

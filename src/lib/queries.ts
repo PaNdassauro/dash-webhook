@@ -10,26 +10,36 @@ export async function fetchDealsForMonth(
 ): Promise<Deal[]> {
   const { start, end } = getMonthDateRange(year, month)
 
-  let query = supabase
-    .from('deals')
-    .select('*')
-    .gte('created_at', start.toISOString())
-    .lte('created_at', end.toISOString())
-
   if (viewType === 'elopement') {
-    query = query.eq('is_elopement', true)
+    // Elopement: is_elopement = true OR title starts with 'EW'
+    const { data, error } = await supabase
+      .from('deals')
+      .select('*')
+      .gte('created_at', start.toISOString())
+      .lte('created_at', end.toISOString())
+      .or('is_elopement.eq.true,title.ilike.EW%')
+
+    if (error) {
+      console.error('Error fetching elopement deals:', error)
+      return []
+    }
+    return data as Deal[]
   } else {
-    query = query.eq('is_elopement', false)
+    // Wedding: is_elopement = false AND title doesn't start with 'EW'
+    const { data, error } = await supabase
+      .from('deals')
+      .select('*')
+      .gte('created_at', start.toISOString())
+      .lte('created_at', end.toISOString())
+      .eq('is_elopement', false)
+      .not('title', 'ilike', 'EW%')
+
+    if (error) {
+      console.error('Error fetching wedding deals:', error)
+      return []
+    }
+    return data as Deal[]
   }
-
-  const { data, error } = await query
-
-  if (error) {
-    console.error('Error fetching deals:', error)
-    return []
-  }
-
-  return data as Deal[]
 }
 
 // MQL pipelines: 1 (SDR Weddings), 3 (Closer Weddings), 4 (Planejamento Weddings)
@@ -70,11 +80,50 @@ export function calculateFunnelMetrics(deals: Deal[], year: number, month: numbe
     ).length,
     // Closer Realizada: field 299 "WW | Como foi feita Reunião Closer" is filled
     closerRealizada: deals.filter(d => d.reuniao_closer !== null && d.reuniao_closer !== '').length,
-    // Venda: data_fechamento falls within the selected month (excluding EW deals)
-    vendas: deals.filter(d =>
-      isInMonth(d.data_fechamento, year, month) &&
-      !(d.title?.startsWith('EW'))
-    ).length,
+    // Venda: data_fechamento falls within the selected month
+    // (EW deals are already filtered out at query level for WW)
+    vendas: deals.filter(d => isInMonth(d.data_fechamento, year, month)).length,
+  }
+}
+
+// Fetch vendas count based on data_fechamento (not created_at)
+export async function fetchVendasForMonth(
+  year: number,
+  month: number,
+  viewType: ViewType
+): Promise<{ count: number; deals: Deal[] }> {
+  const startDate = `${year}-${String(month).padStart(2, '0')}-01`
+  const endMonth = month === 12 ? 1 : month + 1
+  const endYear = month === 12 ? year + 1 : year
+  const endDate = `${endYear}-${String(endMonth).padStart(2, '0')}-01`
+
+  if (viewType === 'elopement') {
+    const { data, error } = await supabase
+      .from('deals')
+      .select('*')
+      .gte('data_fechamento', startDate)
+      .lt('data_fechamento', endDate)
+      .or('is_elopement.eq.true,title.ilike.EW%')
+
+    if (error) {
+      console.error('Error fetching elopement vendas:', error)
+      return { count: 0, deals: [] }
+    }
+    return { count: data?.length || 0, deals: data as Deal[] }
+  } else {
+    const { data, error } = await supabase
+      .from('deals')
+      .select('*')
+      .gte('data_fechamento', startDate)
+      .lt('data_fechamento', endDate)
+      .eq('is_elopement', false)
+      .not('title', 'ilike', 'EW%')
+
+    if (error) {
+      console.error('Error fetching wedding vendas:', error)
+      return { count: 0, deals: [] }
+    }
+    return { count: data?.length || 0, deals: data as Deal[] }
   }
 }
 

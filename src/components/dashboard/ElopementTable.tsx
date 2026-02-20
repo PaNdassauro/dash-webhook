@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { formatPercent, calcAchievement, calcConversionRate } from '@/lib/utils'
+import { formatPercent, calcAchievement, calcConversionRate, calcShouldBe } from '@/lib/utils'
 import type { FunnelMetrics, MonthlyTarget, Deal } from '@/lib/types'
 import { DealsModal } from './DealsModal'
 
@@ -9,6 +9,7 @@ interface ElopementTableProps {
   metrics: FunnelMetrics
   target: MonthlyTarget | null
   previousMetrics: FunnelMetrics | null
+  monthProgress: number
   deals?: Deal[]
   year?: number
   month?: number
@@ -29,6 +30,7 @@ export function ElopementTable({
   metrics,
   target,
   previousMetrics,
+  monthProgress,
   deals = [],
   year = new Date().getFullYear(),
   month = new Date().getMonth() + 1,
@@ -68,6 +70,10 @@ export function ElopementTable({
     vendas: 0,
   }
 
+  // Atingimento = Realizado / Deveria
+  const shouldBeLeads = calcShouldBe(defaultTarget.leads, monthProgress)
+  const shouldBeVendas = calcShouldBe(defaultTarget.vendas, monthProgress)
+
   const rows = [
     {
       label: 'Planejado',
@@ -82,8 +88,8 @@ export function ElopementTable({
     {
       label: 'Atingimento (%)',
       data: [
-        formatPercent(calcAchievement(metrics.leads, defaultTarget.leads)),
-        formatPercent(calcAchievement(metrics.vendas, defaultTarget.vendas)),
+        formatPercent(calcAchievement(metrics.leads, shouldBeLeads) - 100),
+        formatPercent(calcAchievement(metrics.vendas, shouldBeVendas) - 100),
         '—',
         '—',
       ],
@@ -113,7 +119,7 @@ export function ElopementTable({
           <tbody>
             {rows.map((row, rowIndex) => (
               <tr key={rowIndex} className={row.className}>
-                <td className="font-semibold text-left bg-gray-100">{row.label}</td>
+                <td className="row-label">{row.label}</td>
                 {row.data.map((value, colIndex) => {
                   // Make "Realizado" row Leads and Vendas clickable (first 2 columns)
                   const isRealizadoRow = row.label === 'Realizado'
@@ -122,11 +128,11 @@ export function ElopementTable({
                   return (
                     <td
                       key={colIndex}
-                      className={isClickable ? 'cursor-pointer hover:bg-primary/10 hover:text-primary transition-colors' : ''}
+                      className={isClickable ? 'cell-clickable' : ''}
                       onClick={isClickable ? () => handleStageClick(clickableStages[colIndex].stage, clickableStages[colIndex].label) : undefined}
                     >
                       {isClickable ? (
-                        <span className="underline decoration-dotted">{value}</span>
+                        <span className="underline decoration-dotted decoration-neon-red/50">{value}</span>
                       ) : (
                         value
                       )}

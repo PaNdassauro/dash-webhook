@@ -16,9 +16,25 @@ export function formatPercent(value: number): string {
 }
 
 // Get month progress percentage
-export function getMonthProgress(date: Date = new Date()): number {
-  const daysInMonth = getDaysInMonth(date)
-  const dayOfMonth = date.getDate()
+// For past months: 100%, for future months: 0%, for current month: day/total
+export function getMonthProgress(selectedYear: number, selectedMonth: number): number {
+  const today = new Date()
+  const currentYear = today.getFullYear()
+  const currentMonth = today.getMonth() + 1
+
+  // Past month = 100%
+  if (selectedYear < currentYear || (selectedYear === currentYear && selectedMonth < currentMonth)) {
+    return 100
+  }
+
+  // Future month = 0%
+  if (selectedYear > currentYear || (selectedYear === currentYear && selectedMonth > currentMonth)) {
+    return 0
+  }
+
+  // Current month = actual progress
+  const daysInMonth = getDaysInMonth(today)
+  const dayOfMonth = today.getDate()
   return (dayOfMonth / daysInMonth) * 100
 }
 

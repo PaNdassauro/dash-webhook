@@ -5,7 +5,6 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import {
   FunnelTable,
   KPICards,
-  HeaderStats,
   MonthSelector,
   ViewToggle,
 } from '@/components/dashboard'
@@ -14,6 +13,7 @@ import {
   fetchDealsForMonth,
   calculateFunnelMetrics,
   fetchMonthlyTarget,
+  fetchVendasForMonth,
 } from '@/lib/queries'
 import type { FunnelMetrics, MonthlyTarget } from '@/lib/types'
 
@@ -28,34 +28,36 @@ const EMPTY_METRICS: FunnelMetrics = {
   vendas: 0,
 }
 
-function mergeMetrics(a: FunnelMetrics, b: FunnelMetrics): FunnelMetrics {
+// Merge WW (full funnel) with Elopement (only leads + vendas)
+function mergeMetrics(ww: FunnelMetrics, elopement: FunnelMetrics): FunnelMetrics {
   return {
-    leads: a.leads + b.leads,
-    mql: a.mql + b.mql,
-    agendamento: a.agendamento + b.agendamento,
-    reunioes: a.reunioes + b.reunioes,
-    qualificado: a.qualificado + b.qualificado,
-    closerAgendada: a.closerAgendada + b.closerAgendada,
-    closerRealizada: a.closerRealizada + b.closerRealizada,
-    vendas: a.vendas + b.vendas,
+    leads: ww.leads + elopement.leads,
+    mql: ww.mql, // WW only
+    agendamento: ww.agendamento, // WW only
+    reunioes: ww.reunioes, // WW only
+    qualificado: ww.qualificado, // WW only
+    closerAgendada: ww.closerAgendada, // WW only
+    closerRealizada: ww.closerRealizada, // WW only
+    vendas: ww.vendas + elopement.vendas,
   }
 }
 
-function mergeTargets(a: MonthlyTarget | null, b: MonthlyTarget | null): MonthlyTarget | null {
-  if (!a && !b) return null
-  if (!a) return b
-  if (!b) return a
+// Merge WW target (full) with Elopement target (only leads + vendas)
+function mergeTargets(ww: MonthlyTarget | null, elopement: MonthlyTarget | null): MonthlyTarget | null {
+  if (!ww && !elopement) return null
+  if (!ww) return elopement
+  if (!elopement) return ww
   return {
-    ...a,
-    leads: a.leads + b.leads,
-    mql: a.mql + b.mql,
-    agendamento: a.agendamento + b.agendamento,
-    reunioes: a.reunioes + b.reunioes,
-    qualificado: a.qualificado + b.qualificado,
-    closer_agendada: a.closer_agendada + b.closer_agendada,
-    closer_realizada: a.closer_realizada + b.closer_realizada,
-    vendas: a.vendas + b.vendas,
-    cpl: (a.cpl + b.cpl) / 2,
+    ...ww,
+    leads: ww.leads + elopement.leads,
+    mql: ww.mql, // WW only
+    agendamento: ww.agendamento, // WW only
+    reunioes: ww.reunioes, // WW only
+    qualificado: ww.qualificado, // WW only
+    closer_agendada: ww.closer_agendada, // WW only
+    closer_realizada: ww.closer_realizada, // WW only
+    vendas: ww.vendas + elopement.vendas,
+    cpl: ww.cpl, // WW only
   }
 }
 
@@ -77,8 +79,7 @@ function TotalDashboardContent() {
   const [loading, setLoading] = useState(true)
   const [deals, setDeals] = useState<import('@/lib/types').Deal[]>([])
 
-  const selectedDate = new Date(selectedYear, selectedMonth - 1, 1)
-  const monthProgress = getMonthProgress(new Date())
+  const monthProgress = getMonthProgress(selectedYear, selectedMonth)
   const resultProgress = target
     ? calcAchievement(metrics.vendas, target.vendas)
     : 0
@@ -86,19 +87,45 @@ function TotalDashboardContent() {
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      // Fetch both wedding and elopement data
-      const [weddingDeals, elopementDeals, weddingTarget, elopementTarget] = await Promise.all([
+      // Fetch both wedding and elopement data + vendas
+      const [
+        weddingDeals, elopementDeals,
+        weddingTarget, elopementTarget,
+        weddingVendas, elopementVendas
+      ] = await Promise.all([
         fetchDealsForMonth(selectedYear, selectedMonth, 'wedding'),
         fetchDealsForMonth(selectedYear, selectedMonth, 'elopement'),
         fetchMonthlyTarget(selectedYear, selectedMonth, 'wedding'),
         fetchMonthlyTarget(selectedYear, selectedMonth, 'elopement'),
+        fetchVendasForMonth(selectedYear, selectedMonth, 'wedding'),
+        fetchVendasForMonth(selectedYear, selectedMonth, 'elopement'),
       ])
 
-      const allDeals = [...weddingDeals, ...elopementDeals]
-      setDeals(allDeals)
+      // Combine all deals (deduplicated)
+      const allDealsMap = new Map<number, import('@/lib/types').Deal>()
+      ;[...weddingDeals, ...elopementDeals, ...weddingVendas.deals, ...elopementVendas.deals]
+        .forEach(d => allDealsMap.set(d.id, d))
+      setDeals(Array.from(allDealsMap.values()))
 
-      const weddingMetrics = calculateFunnelMetrics(weddingDeals, selectedYear, selectedMonth)
-      const elopementMetrics = calculateFunnelMetrics(elopementDeals, selectedYear, selectedMonth)
+      // Combine wedding deals with vendas deals (deduplicated)
+      const allWeddingDeals = [
+        ...weddingDeals,
+        ...weddingVendas.deals.filter(d => !weddingDeals.some(wd => wd.id === d.id))
+      ]
+      const allElopementDeals = [
+        ...elopementDeals,
+        ...elopementVendas.deals.filter(d => !elopementDeals.some(ed => ed.id === d.id))
+      ]
+
+      // Calculate metrics using allDeals (includes deals closed in month)
+      const weddingMetrics = {
+        ...calculateFunnelMetrics(allWeddingDeals, selectedYear, selectedMonth),
+        vendas: weddingVendas.count,
+      }
+      const elopementMetrics = {
+        ...calculateFunnelMetrics(allElopementDeals, selectedYear, selectedMonth),
+        vendas: elopementVendas.count,
+      }
 
       setMetrics(mergeMetrics(weddingMetrics, elopementMetrics))
       setTarget(mergeTargets(weddingTarget, elopementTarget))
@@ -111,14 +138,26 @@ function TotalDashboardContent() {
         prevYear = selectedYear - 1
       }
 
-      const [prevWedding, prevElopement] = await Promise.all([
+      const [prevWedding, prevElopement, prevWeddingVendas, prevElopementVendas] = await Promise.all([
         fetchDealsForMonth(prevYear, prevMonth, 'wedding'),
         fetchDealsForMonth(prevYear, prevMonth, 'elopement'),
+        fetchVendasForMonth(prevYear, prevMonth, 'wedding'),
+        fetchVendasForMonth(prevYear, prevMonth, 'elopement'),
       ])
 
+      // Combine previous month deals with vendas deals
+      const allPrevWedding = [
+        ...prevWedding,
+        ...prevWeddingVendas.deals.filter(d => !prevWedding.some(wd => wd.id === d.id))
+      ]
+      const allPrevElopement = [
+        ...prevElopement,
+        ...prevElopementVendas.deals.filter(d => !prevElopement.some(ed => ed.id === d.id))
+      ]
+
       setPreviousMetrics(mergeMetrics(
-        calculateFunnelMetrics(prevWedding, prevYear, prevMonth),
-        calculateFunnelMetrics(prevElopement, prevYear, prevMonth)
+        { ...calculateFunnelMetrics(allPrevWedding, prevYear, prevMonth), vendas: prevWeddingVendas.count },
+        { ...calculateFunnelMetrics(allPrevElopement, prevYear, prevMonth), vendas: prevElopementVendas.count }
       ))
     } catch (error) {
       console.error('Error loading data:', error)
@@ -138,14 +177,20 @@ function TotalDashboardContent() {
   }
 
   return (
-    <main className="min-h-screen p-6 bg-gray-100">
-      <div className="max-w-[1600px] mx-auto">
+    <main className="dash-page">
+      <div className="dash-container">
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">
-            Dashboard - Total (WW + Elopement)
-          </h1>
-          <div className="flex gap-4 items-center">
+        <div className="dash-header">
+          <div className="flex items-center gap-3">
+            <h1 className="dash-title">
+              Dashboard — Total
+            </h1>
+            <span className="text-xs font-medium px-2.5 py-1 rounded-full
+              bg-wedding-gold/10 text-wedding-gold border border-wedding-gold/20">
+              WW + Elopement
+            </span>
+          </div>
+          <div className="flex gap-3 items-center">
             <MonthSelector
               selectedYear={selectedYear}
               selectedMonth={selectedMonth}
@@ -159,18 +204,14 @@ function TotalDashboardContent() {
         <KPICards
           monthProgress={monthProgress}
           resultProgress={resultProgress}
-          investment={24667.30} // Mock value (combined)
+          investment={24667.30}
         />
 
         {/* Dashboard Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <HeaderStats
-            selectedMonth={selectedDate}
-            lastUpdate={new Date()}
-          />
+        <div className="glass-card overflow-hidden">
           <div className="p-4">
             {loading ? (
-              <div className="text-center py-8 text-gray-500">
+              <div className="loading-text">
                 Carregando dados...
               </div>
             ) : (
@@ -179,7 +220,7 @@ function TotalDashboardContent() {
                 target={target}
                 previousMetrics={previousMetrics}
                 monthProgress={monthProgress}
-                cpl={43.76} // Mock CPL
+                cpl={43.76}
                 deals={deals}
                 year={selectedYear}
                 month={selectedMonth}
@@ -194,7 +235,7 @@ function TotalDashboardContent() {
 
 export default function TotalDashboard() {
   return (
-    <Suspense fallback={<div className="min-h-screen p-6 bg-gray-100 flex items-center justify-center">Carregando...</div>}>
+    <Suspense fallback={<div className="dash-page flex items-center justify-center loading-text">Carregando...</div>}>
       <TotalDashboardContent />
     </Suspense>
   )

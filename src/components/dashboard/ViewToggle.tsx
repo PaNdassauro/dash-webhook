@@ -25,16 +25,16 @@ export function ViewToggle({ year, month }: ViewToggleProps) {
   }
 
   return (
-    <div className="flex rounded-lg overflow-hidden border border-primary">
+    <div className="view-toggle">
       {VIEWS.map((view) => (
         <Link
           key={view.href}
           href={getHref(view.href)}
-          className={`px-4 py-2 font-medium transition-colors ${
+          className={
             pathname === view.href
-              ? 'bg-primary text-white'
-              : 'bg-white text-primary hover:bg-primary-light hover:text-white'
-          }`}
+              ? 'view-toggle-btn-active'
+              : 'view-toggle-btn'
+          }
         >
           {view.label}
         </Link>

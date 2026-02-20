@@ -1,7 +1,5 @@
 'use client'
 
-import { useState } from 'react'
-
 interface MonthSelectorProps {
   selectedYear: number
   selectedMonth: number
@@ -22,7 +20,7 @@ export function MonthSelector({ selectedYear, selectedMonth, onChange }: MonthSe
       <select
         value={selectedMonth}
         onChange={(e) => onChange(selectedYear, Number(e.target.value))}
-        className="border border-gray-300 rounded px-3 py-2 bg-white"
+        className="neon-select"
       >
         {MONTHS.map((month, i) => (
           <option key={i} value={i + 1}>
@@ -33,7 +31,7 @@ export function MonthSelector({ selectedYear, selectedMonth, onChange }: MonthSe
       <select
         value={selectedYear}
         onChange={(e) => onChange(Number(e.target.value), selectedMonth)}
-        className="border border-gray-300 rounded px-3 py-2 bg-white"
+        className="neon-select"
       >
         {years.map((year) => (
           <option key={year} value={year}>

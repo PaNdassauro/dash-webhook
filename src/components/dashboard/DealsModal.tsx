@@ -35,7 +35,6 @@ export function DealsModal({ isOpen, onClose, title, deals }: DealsModalProps) {
     if (isOpen) {
       document.addEventListener('keydown', handleEscape)
       document.body.style.overflow = 'hidden'
-      // Focus search on open
       setTimeout(() => searchRef.current?.focus(), 100)
     }
 
@@ -45,93 +44,89 @@ export function DealsModal({ isOpen, onClose, title, deals }: DealsModalProps) {
     }
   }, [isOpen, onClose])
 
-  // Reset search when modal closes
   useEffect(() => {
     if (!isOpen) setSearch('')
   }, [isOpen])
 
   if (!isOpen) return null
 
+  const getStatusBadge = (status: string | undefined) => {
+    const s = status || 'Open'
+    if (s === 'Won') return <span className="badge-won">{s}</span>
+    if (s === 'Lost') return <span className="badge-lost">{s}</span>
+    return <span className="badge-open">{s}</span>
+  }
+
   return (
     <div
-      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+      className="modal-backdrop"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div
-        ref={modalRef}
-        className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[80vh] flex flex-col"
-      >
+      <div ref={modalRef} className="modal-content">
         {/* Header */}
-        <div className="flex justify-between items-center p-4 border-b">
-          <h2 className="text-xl font-semibold text-gray-800">
+        <div className="modal-header">
+          <h2 className="modal-title">
             {title} ({filteredDeals.length}{search ? ` de ${deals.length}` : ''})
           </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
-          >
+          <button onClick={onClose} className="modal-close">
             ×
           </button>
         </div>
 
         {/* Search */}
-        <div className="px-4 pt-4">
+        <div className="px-5 pt-4">
           <input
             ref={searchRef}
             type="text"
             placeholder="Buscar por ID, título, pipeline, stage ou nome..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            className="modal-search"
           />
         </div>
 
         {/* Table */}
-        <div className="overflow-auto flex-1 p-4">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-100 sticky top-0">
+        <div className="flex-1 flex flex-col overflow-hidden px-5 pb-5">
+          <table className="modal-table">
+            <thead>
               <tr>
-                <th className="text-left p-2">ID</th>
-                <th className="text-left p-2">Título</th>
-                <th className="text-left p-2">Pipeline</th>
-                <th className="text-left p-2">Stage</th>
-                <th className="text-left p-2">Status</th>
-                <th className="text-left p-2">Criado</th>
+                <th>ID</th>
+                <th>Título</th>
+                <th>Pipeline</th>
+                <th>Stage</th>
+                <th>Status</th>
+                <th>Criado</th>
               </tr>
             </thead>
-            <tbody>
-              {filteredDeals.map((deal) => (
-                <tr key={deal.id} className="border-b hover:bg-gray-50">
-                  <td className="p-2">{deal.id}</td>
-                  <td className="p-2">{deal.title || '-'}</td>
-                  <td className="p-2">{deal.pipeline || '-'}</td>
-                  <td className="p-2">{deal.stage || '-'}</td>
-                  <td className="p-2">
-                    <span className={`px-2 py-1 rounded text-xs ${
-                      deal.status === 'Won' ? 'bg-green-100 text-green-800' :
-                      deal.status === 'Lost' ? 'bg-red-100 text-red-800' :
-                      'bg-blue-100 text-blue-800'
-                    }`}>
-                      {deal.status || 'Open'}
-                    </span>
-                  </td>
-                  <td className="p-2">
-                    {deal.created_at
-                      ? new Date(deal.created_at).toLocaleDateString('pt-BR')
-                      : '-'
-                    }
-                  </td>
-                </tr>
-              ))}
-              {filteredDeals.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="text-center p-8 text-gray-500">
-                    {search ? 'Nenhum resultado encontrado' : 'Nenhum deal encontrado'}
-                  </td>
-                </tr>
-              )}
-            </tbody>
           </table>
+          <div className="overflow-auto flex-1">
+            <table className="modal-table">
+              <tbody>
+                {filteredDeals.map((deal) => (
+                  <tr key={deal.id}>
+                    <td className="font-mono text-xs">{deal.id}</td>
+                    <td>{deal.title || '-'}</td>
+                    <td>{deal.pipeline || '-'}</td>
+                    <td>{deal.stage || '-'}</td>
+                    <td>{getStatusBadge(deal.status ?? undefined)}</td>
+                    <td className="text-xs">
+                      {deal.created_at
+                        ? new Date(deal.created_at).toLocaleDateString('pt-BR')
+                        : '-'
+                    }
+                    </td>
+                  </tr>
+                ))}
+                {filteredDeals.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="text-center py-8 !text-txt-muted dark:!text-txt-dark-muted">
+                      {search ? 'Nenhum resultado encontrado' : 'Nenhum deal encontrado'}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

@@ -5,7 +5,6 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import {
   ElopementTable,
   KPICards,
-  HeaderStats,
   MonthSelector,
   ViewToggle,
 } from '@/components/dashboard'
@@ -15,6 +14,7 @@ import {
   calculateFunnelMetrics,
   fetchMonthlyTarget,
   fetchPreviousMonthMetrics,
+  fetchVendasForMonth,
 } from '@/lib/queries'
 import type { FunnelMetrics, MonthlyTarget } from '@/lib/types'
 
@@ -47,8 +47,7 @@ function ElopementDashboardContent() {
   const [loading, setLoading] = useState(true)
   const [deals, setDeals] = useState<import('@/lib/types').Deal[]>([])
 
-  const selectedDate = new Date(selectedYear, selectedMonth - 1, 1)
-  const monthProgress = getMonthProgress(new Date())
+  const monthProgress = getMonthProgress(selectedYear, selectedMonth)
   const resultProgress = target
     ? calcAchievement(metrics.vendas, target.vendas)
     : 0
@@ -56,14 +55,23 @@ function ElopementDashboardContent() {
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      const [fetchedDeals, targetData, prevMetrics] = await Promise.all([
+      const [fetchedDeals, targetData, prevMetrics, vendasData] = await Promise.all([
         fetchDealsForMonth(selectedYear, selectedMonth, 'elopement'),
         fetchMonthlyTarget(selectedYear, selectedMonth, 'elopement'),
         fetchPreviousMonthMetrics(selectedYear, selectedMonth, 'elopement'),
+        fetchVendasForMonth(selectedYear, selectedMonth, 'elopement'),
       ])
 
-      setDeals(fetchedDeals)
-      setMetrics(calculateFunnelMetrics(fetchedDeals, selectedYear, selectedMonth))
+      // Combine deals: created_at deals + vendas deals (deduplicated)
+      const allDeals = [
+        ...fetchedDeals,
+        ...vendasData.deals.filter(d => !fetchedDeals.some(fd => fd.id === d.id))
+      ]
+      setDeals(allDeals)
+
+      // Calculate metrics using allDeals (includes deals closed in month)
+      const baseMetrics = calculateFunnelMetrics(allDeals, selectedYear, selectedMonth)
+      setMetrics({ ...baseMetrics, vendas: vendasData.count })
       setTarget(targetData)
       setPreviousMetrics(prevMetrics)
     } catch (error) {
@@ -84,14 +92,16 @@ function ElopementDashboardContent() {
   }
 
   return (
-    <main className="min-h-screen p-6 bg-gray-100">
+    <main className="dash-page">
       <div className="max-w-[1200px] mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">
-            Dashboard - Elopement Wedding
-          </h1>
-          <div className="flex gap-4 items-center">
+        <div className="dash-header">
+          <div className="flex items-center gap-3">
+            <h1 className="dash-title">
+              Dashboard — Elopement Wedding
+            </h1>
+          </div>
+          <div className="flex gap-3 items-center">
             <MonthSelector
               selectedYear={selectedYear}
               selectedMonth={selectedMonth}
@@ -105,18 +115,14 @@ function ElopementDashboardContent() {
         <KPICards
           monthProgress={monthProgress}
           resultProgress={resultProgress}
-          investment={9000} // Mock value
+          investment={9000}
         />
 
         {/* Dashboard Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <HeaderStats
-            selectedMonth={selectedDate}
-            lastUpdate={new Date()}
-          />
+        <div className="glass-card overflow-hidden">
           <div className="p-4">
             {loading ? (
-              <div className="text-center py-8 text-gray-500">
+              <div className="loading-text">
                 Carregando dados...
               </div>
             ) : (
@@ -124,6 +130,7 @@ function ElopementDashboardContent() {
                 metrics={metrics}
                 target={target}
                 previousMetrics={previousMetrics}
+                monthProgress={monthProgress}
                 deals={deals}
                 year={selectedYear}
                 month={selectedMonth}
@@ -134,9 +141,9 @@ function ElopementDashboardContent() {
 
         {/* Score display */}
         <div className="mt-6 flex justify-end">
-          <div className="bg-white rounded-lg shadow p-6 text-center">
-            <div className="text-6xl font-bold text-primary">50</div>
-            <div className="text-sm text-gray-500 mt-2">Média Score</div>
+          <div className="score-display">
+            <div className="score-value">50</div>
+            <div className="score-label">Média Score</div>
           </div>
         </div>
       </div>
@@ -146,7 +153,7 @@ function ElopementDashboardContent() {
 
 export default function ElopementDashboard() {
   return (
-    <Suspense fallback={<div className="min-h-screen p-6 bg-gray-100 flex items-center justify-center">Carregando...</div>}>
+    <Suspense fallback={<div className="dash-page flex items-center justify-center loading-text">Carregando...</div>}>
       <ElopementDashboardContent />
     </Suspense>
   )
