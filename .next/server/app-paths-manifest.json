@@ -1,0 +1,8 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/webhook/activecampaign/route": "app/api/webhook/activecampaign/route.js",
+  "/elopement/page": "app/elopement/page.js",
+  "/page": "app/page.js",
+  "/total/page": "app/total/page.js",
+  "/wedding/page": "app/wedding/page.js"
+}

@@ -1,0 +1,1 @@
+id	Deal Title	Group	Stage	Status	Criado em	Atualizado em	Nome do Noivo	Convidados	Orçamento 	Destino	motivo de perda	como foi feita a reunião	data hora reunião	Data Fechamento Assessoria Data e horário do agendamento da 1ª reunião	Como foi feita a 1ª reunião?	Qualificado para SQL	Data e horário do agendamento com a Closer Reuniao feita com a closer

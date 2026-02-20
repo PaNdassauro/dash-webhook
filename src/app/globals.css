@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-rgb: 245, 245, 245;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-rgb));
+}
+
+/* Dashboard table styles */
+.funnel-table {
+  @apply w-full border-collapse text-sm;
+}
+
+.funnel-table th,
+.funnel-table td {
+  @apply border border-gray-300 px-3 py-2 text-center;
+}
+
+.funnel-table th {
+  @apply bg-primary text-white font-semibold;
+}
+
+.funnel-table .row-planejado {
+  @apply bg-gray-100;
+}
+
+.funnel-table .row-realizado {
+  @apply bg-white font-semibold;
+}
+
+.funnel-table .row-atingimento {
+  @apply bg-pink-50;
+}
+
+.funnel-table .row-deveria {
+  @apply bg-gray-50;
+}
+
+.funnel-table .row-periodo-anterior-pct {
+  @apply bg-gray-100;
+}
+
+.funnel-table .row-periodo-anterior {
+  @apply bg-gray-50;
+}
+
+.funnel-table .row-custos {
+  @apply bg-gray-100;
+}
+
+/* Negative values */
+.negative {
+  @apply text-red-600;
+}
+
+/* Positive values */
+.positive {
+  @apply text-green-600;
+}
