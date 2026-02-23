@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Welcome Weddings - Google Ads API Integration Design Document</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      line-height: 1.6;
+      color: #333;
+    }
+    h1 { color: #1a73e8; border-bottom: 2px solid #1a73e8; padding-bottom: 10px; }
+    h2 { color: #444; margin-top: 30px; }
+    table { border-collapse: collapse; width: 100%; margin: 15px 0; }
+    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+    th { background-color: #f5f5f5; }
+    pre { background: #f5f5f5; padding: 15px; overflow-x: auto; border-radius: 5px; }
+    code { background: #f0f0f0; padding: 2px 6px; border-radius: 3px; }
+    hr { margin: 30px 0; border: none; border-top: 1px solid #ddd; }
+    .footer { color: #666; font-style: italic; margin-top: 40px; }
+  </style>
+</head>
+<body>
+
+<h1>Welcome Weddings - Google Ads API Integration Design Document</h1>
+
+<h2>1. Overview</h2>
+<p><strong>Company:</strong> Welcome Weddings<br>
+<strong>Application:</strong> Internal Marketing Dashboard<br>
+<strong>Purpose:</strong> Read-only access to Google Ads metrics for internal reporting</p>
+
+<h2>2. Business Use Case</h2>
+<p>Welcome Weddings is a destination wedding planning company. We run Google Ads campaigns to acquire leads from international markets. This internal dashboard consolidates marketing data to help our team:</p>
+<ul>
+  <li>Track advertising spend across platforms (Google Ads + Meta Ads)</li>
+  <li>Calculate Cost Per Lead (CPL) and Cost Per Acquisition (CPA)</li>
+  <li>Monitor campaign performance over time</li>
+  <li>Make data-driven budget allocation decisions</li>
+</ul>
+
+<h2>3. Technical Architecture</h2>
+<pre>
+┌─────────────────────────────────────────────────────────────┐
+│                    Internal Dashboard                        │
+│                   (Next.js Application)                      │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    API Route Layer                           │
+│                  /api/google-ads                             │
+└─────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                  Google Ads API (v17)                        │
+│              Read-only metrics retrieval                     │
+└─────────────────────────────────────────────────────────────┘
+</pre>
+
+<h2>4. Data Flow</h2>
+<ol>
+  <li>User accesses internal dashboard (authenticated)</li>
+  <li>Dashboard requests metrics for selected month</li>
+  <li>Server-side API route authenticates with Google Ads API using OAuth 2.0</li>
+  <li>Google Ads API returns metrics (spend, impressions, clicks)</li>
+  <li>Dashboard displays aggregated data</li>
+</ol>
+
+<h2>5. API Endpoints Used</h2>
+<table>
+  <tr>
+    <th>Endpoint</th>
+    <th>Method</th>
+    <th>Purpose</th>
+  </tr>
+  <tr>
+    <td><code>/customers/{customerId}/googleAds:search</code></td>
+    <td>POST</td>
+    <td>Query campaign metrics</td>
+  </tr>
+</table>
+
+<h2>6. Data Retrieved</h2>
+<p>We only retrieve the following read-only metrics:</p>
+<ul>
+  <li><code>metrics.cost_micros</code> - Total spend</li>
+  <li><code>metrics.impressions</code> - Ad impressions</li>
+  <li><code>metrics.clicks</code> - Ad clicks</li>
+</ul>
+<p><strong>We do NOT:</strong></p>
+<ul>
+  <li>Create, modify, or delete campaigns</li>
+  <li>Access customer personal data</li>
+  <li>Access billing information</li>
+  <li>Share data with third parties</li>
+</ul>
+
+<h2>7. Authentication</h2>
+<ul>
+  <li>OAuth 2.0 with refresh token</li>
+  <li>Server-side only (tokens never exposed to browser)</li>
+  <li>Credentials stored securely in environment variables</li>
+</ul>
+
+<h2>8. Rate Limiting & Best Practices</h2>
+<ul>
+  <li>Queries are made on-demand when user loads dashboard</li>
+  <li>Results are cached to minimize API calls</li>
+  <li>Typical usage: &lt; 100 queries per day</li>
+</ul>
+
+<h2>9. Security Measures</h2>
+<ul>
+  <li>All credentials stored in secure environment variables</li>
+  <li>HTTPS-only communication</li>
+  <li>Server-side API calls (no client-side token exposure)</li>
+  <li>Internal tool with restricted access</li>
+</ul>
+
+<h2>10. Contact Information</h2>
+<p><strong>Developer:</strong> Welcome Weddings Tech Team<br>
+<strong>Email:</strong> tech@welcomeweddings.com<br>
+<strong>Website:</strong> https://welcomeweddings.com</p>
+
+<hr>
+<p class="footer">Document Version: 1.0 | Last Updated: February 2026</p>
+
+</body>
+</html>

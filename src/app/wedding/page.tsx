@@ -15,6 +15,8 @@ import {
   fetchMonthlyTarget,
   fetchPreviousMonthMetrics,
   fetchVendasForMonth,
+  fetchMetaAdsSpend,
+  fetchGoogleAdsSpend,
 } from '@/lib/queries'
 import type { FunnelMetrics, MonthlyTarget } from '@/lib/types'
 
@@ -46,6 +48,9 @@ function WeddingDashboardContent() {
   const [previousMetrics, setPreviousMetrics] = useState<FunnelMetrics | null>(null)
   const [loading, setLoading] = useState(true)
   const [deals, setDeals] = useState<import('@/lib/types').Deal[]>([])
+  const [totalSpend, setTotalSpend] = useState(0)
+  const [totalImpressions, setTotalImpressions] = useState(0)
+  const [totalClicks, setTotalClicks] = useState(0)
 
   const monthProgress = getMonthProgress(selectedYear, selectedMonth)
   const resultProgress = target
@@ -55,11 +60,13 @@ function WeddingDashboardContent() {
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      const [fetchedDeals, targetData, prevMetrics, vendasData] = await Promise.all([
+      const [fetchedDeals, targetData, prevMetrics, vendasData, metaAds, googleAds] = await Promise.all([
         fetchDealsForMonth(selectedYear, selectedMonth, 'wedding'),
         fetchMonthlyTarget(selectedYear, selectedMonth, 'wedding'),
         fetchPreviousMonthMetrics(selectedYear, selectedMonth, 'wedding'),
         fetchVendasForMonth(selectedYear, selectedMonth, 'wedding'),
+        fetchMetaAdsSpend(selectedYear, selectedMonth, 'wedding'),
+        fetchGoogleAdsSpend(selectedYear, selectedMonth),
       ])
 
       // Combine deals: created_at deals + vendas deals (deduplicated)
@@ -74,6 +81,11 @@ function WeddingDashboardContent() {
       setMetrics({ ...baseMetrics, vendas: vendasData.count })
       setTarget(targetData)
       setPreviousMetrics(prevMetrics)
+
+      // Combine Meta + Google Ads
+      setTotalSpend(metaAds.spend + googleAds.spend)
+      setTotalImpressions(metaAds.impressions + googleAds.impressions)
+      setTotalClicks(metaAds.clicks + googleAds.clicks)
     } catch (error) {
       console.error('Error loading data:', error)
     } finally {
@@ -115,7 +127,7 @@ function WeddingDashboardContent() {
         <KPICards
           monthProgress={monthProgress}
           resultProgress={resultProgress}
-          investment={15667.30}
+          investment={totalSpend}
         />
 
         {/* Dashboard Table */}
@@ -131,10 +143,12 @@ function WeddingDashboardContent() {
                 target={target}
                 previousMetrics={previousMetrics}
                 monthProgress={monthProgress}
-                cpl={43.76}
+                cpl={metrics.leads > 0 ? totalSpend / metrics.leads : 0}
                 deals={deals}
                 year={selectedYear}
                 month={selectedMonth}
+                impressions={totalImpressions}
+                clicks={totalClicks}
               />
             )}
           </div>

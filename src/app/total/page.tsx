@@ -14,6 +14,8 @@ import {
   calculateFunnelMetrics,
   fetchMonthlyTarget,
   fetchVendasForMonth,
+  fetchMetaAdsSpend,
+  fetchGoogleAdsSpend,
 } from '@/lib/queries'
 import type { FunnelMetrics, MonthlyTarget } from '@/lib/types'
 
@@ -78,6 +80,9 @@ function TotalDashboardContent() {
   const [previousMetrics, setPreviousMetrics] = useState<FunnelMetrics | null>(null)
   const [loading, setLoading] = useState(true)
   const [deals, setDeals] = useState<import('@/lib/types').Deal[]>([])
+  const [totalSpend, setTotalSpend] = useState(0)
+  const [totalImpressions, setTotalImpressions] = useState(0)
+  const [totalClicks, setTotalClicks] = useState(0)
 
   const monthProgress = getMonthProgress(selectedYear, selectedMonth)
   const resultProgress = target
@@ -87,11 +92,12 @@ function TotalDashboardContent() {
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      // Fetch both wedding and elopement data + vendas
+      // Fetch both wedding and elopement data + vendas + Meta Ads + Google Ads
       const [
         weddingDeals, elopementDeals,
         weddingTarget, elopementTarget,
-        weddingVendas, elopementVendas
+        weddingVendas, elopementVendas,
+        weddingMetaAds, googleAds
       ] = await Promise.all([
         fetchDealsForMonth(selectedYear, selectedMonth, 'wedding'),
         fetchDealsForMonth(selectedYear, selectedMonth, 'elopement'),
@@ -99,6 +105,8 @@ function TotalDashboardContent() {
         fetchMonthlyTarget(selectedYear, selectedMonth, 'elopement'),
         fetchVendasForMonth(selectedYear, selectedMonth, 'wedding'),
         fetchVendasForMonth(selectedYear, selectedMonth, 'elopement'),
+        fetchMetaAdsSpend(selectedYear, selectedMonth, 'wedding'),
+        fetchGoogleAdsSpend(selectedYear, selectedMonth),
       ])
 
       // Combine all deals (deduplicated)
@@ -129,6 +137,11 @@ function TotalDashboardContent() {
 
       setMetrics(mergeMetrics(weddingMetrics, elopementMetrics))
       setTarget(mergeTargets(weddingTarget, elopementTarget))
+
+      // Combine Meta + Google Ads (+ 9000 elopement fixed)
+      setTotalSpend(weddingMetaAds.spend + googleAds.spend + 9000)
+      setTotalImpressions(weddingMetaAds.impressions + googleAds.impressions)
+      setTotalClicks(weddingMetaAds.clicks + googleAds.clicks)
 
       // Previous month
       let prevYear = selectedYear
@@ -204,7 +217,7 @@ function TotalDashboardContent() {
         <KPICards
           monthProgress={monthProgress}
           resultProgress={resultProgress}
-          investment={24667.30}
+          investment={totalSpend}
         />
 
         {/* Dashboard Table */}
@@ -220,10 +233,12 @@ function TotalDashboardContent() {
                 target={target}
                 previousMetrics={previousMetrics}
                 monthProgress={monthProgress}
-                cpl={43.76}
+                cpl={metrics.leads > 0 ? totalSpend / metrics.leads : 0}
                 deals={deals}
                 year={selectedYear}
                 month={selectedMonth}
+                impressions={totalImpressions}
+                clicks={totalClicks}
               />
             )}
           </div>

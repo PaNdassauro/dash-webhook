@@ -14,6 +14,8 @@ interface FunnelTableProps {
   deals?: Deal[]
   year?: number
   month?: number
+  impressions?: number
+  clicks?: number
 }
 
 const FUNNEL_COLUMNS = [
@@ -48,6 +50,8 @@ export function FunnelTable({
   deals = [],
   year = new Date().getFullYear(),
   month = new Date().getMonth() + 1,
+  impressions = 0,
+  clicks = 0,
 }: FunnelTableProps) {
   const [modalOpen, setModalOpen] = useState(false)
   const [modalTitle, setModalTitle] = useState('')
@@ -335,6 +339,36 @@ export function FunnelTable({
             })}
           </div>
         </div>
+
+        {/* Meta Ads Stats */}
+        {impressions > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="metric-card">
+              <div className="metric-card-label">Impressões</div>
+              <div className="metric-card-value">{impressions.toLocaleString('pt-BR')}</div>
+              <div className="metric-card-target">Meta Ads</div>
+            </div>
+            <div className="metric-card">
+              <div className="metric-card-label">Cliques</div>
+              <div className="metric-card-value">{clicks.toLocaleString('pt-BR')}</div>
+              <div className="metric-card-target">Meta Ads</div>
+            </div>
+            <div className="metric-card">
+              <div className="metric-card-label">CTR</div>
+              <div className="metric-card-value">
+                {impressions > 0 ? ((clicks / impressions) * 100).toFixed(2) : '0'}%
+              </div>
+              <div className="metric-card-target">Cliques / Impressões</div>
+            </div>
+            <div className="metric-card">
+              <div className="metric-card-label">CPC</div>
+              <div className="metric-card-value">
+                {clicks > 0 ? formatCurrency((cpl * metrics.leads) / clicks) : '—'}
+              </div>
+              <div className="metric-card-target">Custo por Clique</div>
+            </div>
+          </div>
+        )}
       </div>
 
       <DealsModal

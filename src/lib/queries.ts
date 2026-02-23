@@ -193,3 +193,70 @@ export async function getAvailableMonths(): Promise<{ year: number; month: numbe
     return { year, month }
   })
 }
+
+// Meta Ads spend data
+export interface MetaAdsData {
+  spend: number
+  impressions: number
+  clicks: number
+  cpc: number
+  cpm: number
+}
+
+export async function fetchMetaAdsSpend(
+  year: number,
+  month: number,
+  pipeline: ViewType
+): Promise<MetaAdsData> {
+  try {
+    const response = await fetch(
+      `/api/meta-ads?year=${year}&month=${month}&pipeline=${pipeline}`
+    )
+
+    if (!response.ok) {
+      console.error('Meta Ads API error:', response.status)
+      return { spend: 0, impressions: 0, clicks: 0, cpc: 0, cpm: 0 }
+    }
+
+    const data = await response.json()
+    return {
+      spend: data.spend || 0,
+      impressions: data.impressions || 0,
+      clicks: data.clicks || 0,
+      cpc: data.cpc || 0,
+      cpm: data.cpm || 0,
+    }
+  } catch (error) {
+    console.error('Error fetching Meta Ads data:', error)
+    return { spend: 0, impressions: 0, clicks: 0, cpc: 0, cpm: 0 }
+  }
+}
+
+// Google Ads spend data (same interface as Meta)
+export async function fetchGoogleAdsSpend(
+  year: number,
+  month: number
+): Promise<MetaAdsData> {
+  try {
+    const response = await fetch(
+      `/api/google-ads?year=${year}&month=${month}`
+    )
+
+    if (!response.ok) {
+      console.error('Google Ads API error:', response.status)
+      return { spend: 0, impressions: 0, clicks: 0, cpc: 0, cpm: 0 }
+    }
+
+    const data = await response.json()
+    return {
+      spend: data.spend || 0,
+      impressions: data.impressions || 0,
+      clicks: data.clicks || 0,
+      cpc: data.cpc || 0,
+      cpm: data.cpm || 0,
+    }
+  } catch (error) {
+    console.error('Error fetching Google Ads data:', error)
+    return { spend: 0, impressions: 0, clicks: 0, cpc: 0, cpm: 0 }
+  }
+}
