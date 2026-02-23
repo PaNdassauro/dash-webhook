@@ -7,6 +7,7 @@ import {
   KPICards,
   MonthSelector,
   ViewToggle,
+  CleanupButton,
 } from '@/components/dashboard'
 import { getMonthProgress, calcAchievement } from '@/lib/utils'
 import {
@@ -102,6 +103,7 @@ function ElopementDashboardContent() {
             </h1>
           </div>
           <div className="flex gap-3 items-center">
+            <CleanupButton />
             <MonthSelector
               selectedYear={selectedYear}
               selectedMonth={selectedMonth}
