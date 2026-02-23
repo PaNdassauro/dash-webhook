@@ -209,22 +209,27 @@ export async function fetchMetaAdsSpend(
   pipeline: ViewType
 ): Promise<MetaAdsData> {
   try {
-    const response = await fetch(
-      `/api/meta-ads?year=${year}&month=${month}&pipeline=${pipeline}`
-    )
+    // Fetch from cache (updated daily by cron)
+    const { data, error } = await supabase
+      .from('ads_spend_cache')
+      .select('spend, impressions, clicks, cpc, cpm')
+      .eq('year', year)
+      .eq('month', month)
+      .eq('source', 'meta_ads')
+      .eq('pipeline', pipeline)
+      .maybeSingle()
 
-    if (!response.ok) {
-      console.error('Meta Ads API error:', response.status)
+    if (error || !data) {
+      console.error('Error fetching Meta Ads from cache:', error)
       return { spend: 0, impressions: 0, clicks: 0, cpc: 0, cpm: 0 }
     }
 
-    const data = await response.json()
     return {
-      spend: data.spend || 0,
+      spend: Number(data.spend) || 0,
       impressions: data.impressions || 0,
       clicks: data.clicks || 0,
-      cpc: data.cpc || 0,
-      cpm: data.cpm || 0,
+      cpc: Number(data.cpc) || 0,
+      cpm: Number(data.cpm) || 0,
     }
   } catch (error) {
     console.error('Error fetching Meta Ads data:', error)
@@ -238,22 +243,27 @@ export async function fetchGoogleAdsSpend(
   month: number
 ): Promise<MetaAdsData> {
   try {
-    const response = await fetch(
-      `/api/google-ads?year=${year}&month=${month}`
-    )
+    // Fetch from cache (updated daily by cron)
+    const { data, error } = await supabase
+      .from('ads_spend_cache')
+      .select('spend, impressions, clicks, cpc, cpm')
+      .eq('year', year)
+      .eq('month', month)
+      .eq('source', 'google_ads')
+      .is('pipeline', null)
+      .maybeSingle()
 
-    if (!response.ok) {
-      console.error('Google Ads API error:', response.status)
+    if (error || !data) {
+      console.error('Error fetching Google Ads from cache:', error)
       return { spend: 0, impressions: 0, clicks: 0, cpc: 0, cpm: 0 }
     }
 
-    const data = await response.json()
     return {
-      spend: data.spend || 0,
+      spend: Number(data.spend) || 0,
       impressions: data.impressions || 0,
       clicks: data.clicks || 0,
-      cpc: data.cpc || 0,
-      cpm: data.cpm || 0,
+      cpc: Number(data.cpc) || 0,
+      cpm: Number(data.cpm) || 0,
     }
   } catch (error) {
     console.error('Error fetching Google Ads data:', error)
