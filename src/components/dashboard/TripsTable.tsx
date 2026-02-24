@@ -1,14 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { formatPercent, formatCurrency, calcAchievement, calcShouldBe, calcFunnelCVR } from '@/lib/utils'
-import type { FunnelMetrics, MonthlyTarget, Deal } from '@/lib/types'
+import { formatPercent, formatCurrency, calcAchievement, calcShouldBe, calcTripsFunnelCVR } from '@/lib/utils'
+import type { TripsFunnelMetrics, MonthlyTarget, Deal } from '@/lib/types'
 import { DealsModal } from './DealsModal'
 
-interface FunnelTableProps {
-  metrics: FunnelMetrics
+interface TripsTableProps {
+  metrics: TripsFunnelMetrics
   target: MonthlyTarget | null
-  previousMetrics: FunnelMetrics | null
+  previousMetrics: TripsFunnelMetrics | null
   monthProgress: number
   cpl: number
   deals?: Deal[]
@@ -23,24 +23,12 @@ const FUNNEL_COLUMNS = [
   'MQL',
   'Agendamento',
   'Reuniões',
-  'Qualificado',
-  'Closer Agendada',
-  'Closer Realizada',
-  'Vendas',
+  'Taxa',
 ]
 
-// Leads Pipelines: 1 (SDR), 3 (Closer), 4 (Planejamento), 17 (Internacional), 31 (Desqualificados)
-const LEADS_PIPELINES = ['SDR Weddings', 'Closer Weddings', 'Planejamento Weddings', 'WW - Internacional', 'Outros Desqualificados | Wedding']
-
-// MQL Pipelines: only 1 (SDR), 3 (Closer), 4 (Planejamento)
-const MQL_PIPELINES = ['SDR Weddings', 'Closer Weddings', 'Planejamento Weddings']
-
-// Helper to check if deal is Elopement (title starts with EW only)
-// DW = Destination Wedding, counts in WW General
-function isElopementTitle(title: string | null): boolean {
-  if (!title) return false
-  return title.startsWith('EW')
-}
+// Trips Pipelines
+const TRIPS_LEADS_PIPELINES = ['Consultoras TRIPS', 'SDR - Trips', 'WTN - Desqualificados']
+const TRIPS_MQL_PIPELINES = ['Consultoras TRIPS', 'SDR - Trips']
 
 // Helper to check if a date falls within a specific month
 function isInMonth(dateStr: string | null, year: number, month: number): boolean {
@@ -49,9 +37,9 @@ function isInMonth(dateStr: string | null, year: number, month: number): boolean
   return date.getFullYear() === year && date.getMonth() + 1 === month
 }
 
-type StageKey = 'leads' | 'mql' | 'agendamento' | 'reunioes' | 'qualificado' | 'closerAgendada' | 'closerRealizada' | 'vendas'
+type StageKey = 'leads' | 'mql' | 'agendamento' | 'reunioes' | 'taxa'
 
-export function FunnelTable({
+export function TripsTable({
   metrics,
   target,
   previousMetrics,
@@ -62,7 +50,7 @@ export function FunnelTable({
   month = new Date().getMonth() + 1,
   impressions = 0,
   clicks = 0,
-}: FunnelTableProps) {
+}: TripsTableProps) {
   const [modalOpen, setModalOpen] = useState(false)
   const [modalTitle, setModalTitle] = useState('')
   const [modalDeals, setModalDeals] = useState<Deal[]>([])
@@ -79,63 +67,43 @@ export function FunnelTable({
   const getDealsForStage = (stage: StageKey): Deal[] => {
     switch (stage) {
       case 'leads':
-        // Leads must be created in the selected month
         return deals.filter(d =>
           d.pipeline &&
-          LEADS_PIPELINES.includes(d.pipeline) &&
-          !isElopementTitle(d.title) &&
+          TRIPS_LEADS_PIPELINES.includes(d.pipeline) &&
           isCreatedInMonth(d)
         )
       case 'mql':
-        // MQL must be created in the selected month
         return deals.filter(d =>
           d.pipeline &&
-          MQL_PIPELINES.includes(d.pipeline) &&
-          !isElopementTitle(d.title) &&
+          TRIPS_MQL_PIPELINES.includes(d.pipeline) &&
           isCreatedInMonth(d)
         )
       case 'agendamento':
-        return deals.filter(d => isInMonth(d.data_reuniao_1, year, month))
+        return deals.filter(d => isInMonth(d.data_reuniao_trips, year, month))
       case 'reunioes':
         return deals.filter(d =>
-          isInMonth(d.data_reuniao_1, year, month) &&
-          d.como_reuniao_1 !== null &&
-          d.como_reuniao_1 !== '' &&
-          d.como_reuniao_1 !== 'Não teve reunião'
+          isInMonth(d.data_reuniao_trips, year, month) &&
+          d.como_reuniao_trips !== null &&
+          d.como_reuniao_trips !== ''
         )
-      case 'qualificado':
-        return deals.filter(d =>
-          isInMonth(d.data_qualificado, year, month) ||
-          d.qualificado_sql === true
-        )
-      case 'closerAgendada':
-        return deals.filter(d =>
-          isInMonth(d.data_closer, year, month) ||
-          (d.data_closer !== null && d.data_closer !== '')
-        )
-      case 'closerRealizada':
-        return deals.filter(d => d.reuniao_closer !== null && d.reuniao_closer !== '')
-      case 'vendas':
-        return deals.filter(d => isInMonth(d.data_fechamento, year, month))
+      case 'taxa':
+        return deals.filter(d => d.pagou_taxa === true)
       default:
         return []
     }
   }
 
   // Calculate actual metrics from deals (ensures table matches modal)
-  const actualMetrics: FunnelMetrics = {
+  const actualMetrics: TripsFunnelMetrics = {
     leads: getDealsForStage('leads').length,
     mql: getDealsForStage('mql').length,
     agendamento: getDealsForStage('agendamento').length,
     reunioes: getDealsForStage('reunioes').length,
-    qualificado: getDealsForStage('qualificado').length,
-    closerAgendada: getDealsForStage('closerAgendada').length,
-    closerRealizada: getDealsForStage('closerRealizada').length,
-    vendas: getDealsForStage('vendas').length,
+    taxa: getDealsForStage('taxa').length,
   }
 
-  const cvr = calcFunnelCVR(actualMetrics)
-  const prevCvr = previousMetrics ? calcFunnelCVR(previousMetrics) : null
+  const cvr = calcTripsFunnelCVR(actualMetrics)
+  const prevCvr = previousMetrics ? calcTripsFunnelCVR(previousMetrics) : null
 
   const handleStageClick = (stage: StageKey, title: string) => {
     if (!deals.length) return
@@ -146,18 +114,13 @@ export function FunnelTable({
   }
 
   // Default target if none exists
-  const defaultTarget: MonthlyTarget = target || {
-    month: '',
-    pipeline_type: 'wedding',
-    leads: 0,
-    mql: 0,
-    agendamento: 0,
-    reunioes: 0,
-    qualificado: 0,
-    closer_agendada: 0,
-    closer_realizada: 0,
-    vendas: 0,
-    cpl: 0,
+  const defaultTarget = {
+    leads: target?.leads || 0,
+    mql: target?.mql || 0,
+    agendamento: target?.agendamento || 0,
+    reunioes: target?.reunioes || 0,
+    taxa: target?.taxa || 0,
+    cpl: target?.cpl || 0,
   }
 
   // Clickable metrics for the "Realizado" row - use actualMetrics to match modal
@@ -166,10 +129,7 @@ export function FunnelTable({
     { stage: 'mql', label: 'MQL', value: actualMetrics.mql },
     { stage: 'agendamento', label: 'Agendamento', value: actualMetrics.agendamento },
     { stage: 'reunioes', label: 'Reuniões', value: actualMetrics.reunioes },
-    { stage: 'qualificado', label: 'Qualificado', value: actualMetrics.qualificado },
-    { stage: 'closerAgendada', label: 'Closer Agendada', value: actualMetrics.closerAgendada },
-    { stage: 'closerRealizada', label: 'Closer Realizada', value: actualMetrics.closerRealizada },
-    { stage: 'vendas', label: 'Vendas', value: actualMetrics.vendas },
+    { stage: 'taxa', label: 'Taxa', value: actualMetrics.taxa },
   ]
 
   // Atingimento = Realizado / Deveria
@@ -177,21 +137,15 @@ export function FunnelTable({
   const shouldBeMql = calcShouldBe(defaultTarget.mql, monthProgress)
   const shouldBeAgendamento = calcShouldBe(defaultTarget.agendamento, monthProgress)
   const shouldBeReunioes = calcShouldBe(defaultTarget.reunioes, monthProgress)
-  const shouldBeQualificado = calcShouldBe(defaultTarget.qualificado, monthProgress)
-  const shouldBeCloserAgendada = calcShouldBe(defaultTarget.closer_agendada, monthProgress)
-  const shouldBeCloserRealizada = calcShouldBe(defaultTarget.closer_realizada, monthProgress)
-  const shouldBeVendas = calcShouldBe(defaultTarget.vendas, monthProgress)
+  const shouldBeTaxa = calcShouldBe(defaultTarget.taxa, monthProgress)
 
-  // Main funnel data (8 columns only) - use actualMetrics to match modal
+  // Main funnel data (5 columns) - use actualMetrics to match modal
   const planejado = [
     defaultTarget.leads,
     defaultTarget.mql,
     defaultTarget.agendamento,
     defaultTarget.reunioes,
-    defaultTarget.qualificado,
-    defaultTarget.closer_agendada,
-    defaultTarget.closer_realizada,
-    defaultTarget.vendas,
+    defaultTarget.taxa,
   ]
 
   const realizado = [
@@ -199,10 +153,7 @@ export function FunnelTable({
     actualMetrics.mql,
     actualMetrics.agendamento,
     actualMetrics.reunioes,
-    actualMetrics.qualificado,
-    actualMetrics.closerAgendada,
-    actualMetrics.closerRealizada,
-    actualMetrics.vendas,
+    actualMetrics.taxa,
   ]
 
   const atingimento = [
@@ -210,10 +161,7 @@ export function FunnelTable({
     formatPercent(calcAchievement(actualMetrics.mql, shouldBeMql) - 100),
     formatPercent(calcAchievement(actualMetrics.agendamento, shouldBeAgendamento) - 100),
     formatPercent(calcAchievement(actualMetrics.reunioes, shouldBeReunioes) - 100),
-    formatPercent(calcAchievement(actualMetrics.qualificado, shouldBeQualificado) - 100),
-    formatPercent(calcAchievement(actualMetrics.closerAgendada, shouldBeCloserAgendada) - 100),
-    formatPercent(calcAchievement(actualMetrics.closerRealizada, shouldBeCloserRealizada) - 100),
-    formatPercent(calcAchievement(actualMetrics.vendas, shouldBeVendas) - 100),
+    formatPercent(calcAchievement(actualMetrics.taxa, shouldBeTaxa) - 100),
   ]
 
   const deveria = [
@@ -221,10 +169,7 @@ export function FunnelTable({
     shouldBeMql,
     shouldBeAgendamento,
     shouldBeReunioes,
-    shouldBeQualificado,
-    shouldBeCloserAgendada,
-    shouldBeCloserRealizada,
-    shouldBeVendas,
+    shouldBeTaxa,
   ]
 
   const periodoAnteriorPct = previousMetrics
@@ -233,12 +178,9 @@ export function FunnelTable({
       formatPercent(calcAchievement(actualMetrics.mql, previousMetrics.mql) - 100),
       formatPercent(calcAchievement(actualMetrics.agendamento, previousMetrics.agendamento) - 100),
       formatPercent(calcAchievement(actualMetrics.reunioes, previousMetrics.reunioes) - 100),
-      formatPercent(calcAchievement(actualMetrics.qualificado, previousMetrics.qualificado) - 100),
-      formatPercent(calcAchievement(actualMetrics.closerAgendada, previousMetrics.closerAgendada) - 100),
-      formatPercent(calcAchievement(actualMetrics.closerRealizada, previousMetrics.closerRealizada) - 100),
-      formatPercent(calcAchievement(actualMetrics.vendas, previousMetrics.vendas) - 100),
+      formatPercent(calcAchievement(actualMetrics.taxa, previousMetrics.taxa) - 100),
     ]
-    : Array(8).fill('')
+    : Array(5).fill('')
 
   const periodoAnterior = previousMetrics
     ? [
@@ -246,21 +188,15 @@ export function FunnelTable({
       previousMetrics.mql,
       previousMetrics.agendamento,
       previousMetrics.reunioes,
-      previousMetrics.qualificado,
-      previousMetrics.closerAgendada,
-      previousMetrics.closerRealizada,
-      previousMetrics.vendas,
+      previousMetrics.taxa,
     ]
-    : Array(8).fill('')
+    : Array(5).fill('')
 
   const custos = [
     formatCurrency(cpl * actualMetrics.leads),
     formatCurrency(cpl * 1.5 * actualMetrics.mql),
     formatCurrency(cpl * 2 * actualMetrics.agendamento),
     formatCurrency(cpl * 2.5 * actualMetrics.reunioes),
-    formatCurrency(cpl * 3 * actualMetrics.qualificado),
-    formatCurrency(cpl * 3.5 * actualMetrics.closerAgendada),
-    formatCurrency(cpl * 4 * actualMetrics.closerRealizada),
     '',
   ]
 
@@ -274,15 +210,12 @@ export function FunnelTable({
     { label: 'Custos', data: custos, className: 'row-custos' },
   ]
 
-  // CVR cards data
+  // CVR cards data (4 conversions for Trips)
   const cvrCards = [
-    { label: 'Leads → MQL', value: cvr.cvrMql, prev: prevCvr?.cvrMql, target: 70 },
-    { label: 'MQL → Agend.', value: cvr.cvrAg, prev: prevCvr?.cvrAg, target: 45 },
-    { label: 'Agend. → Reunião', value: cvr.cvrReu, prev: prevCvr?.cvrReu, target: 70 },
-    { label: 'Reunião → SQL', value: cvr.cvrSql, prev: prevCvr?.cvrSql, target: 65 },
-    { label: 'SQL → Closer Ag.', value: cvr.cvrRa, prev: prevCvr?.cvrRa, target: 100 },
-    { label: 'Closer Ag. → Real.', value: cvr.cvrRr, prev: prevCvr?.cvrRr, target: 87 },
-    { label: 'Closer → Venda', value: cvr.cvrVenda, prev: prevCvr?.cvrVenda, target: 35 },
+    { label: 'Leads → MQL', value: cvr.cvrMql, prev: prevCvr?.cvrMql, target: 60 },
+    { label: 'MQL → Agend.', value: cvr.cvrAg, prev: prevCvr?.cvrAg, target: 40 },
+    { label: 'Agend. → Reunião', value: cvr.cvrReu, prev: prevCvr?.cvrReu, target: 80 },
+    { label: 'Reunião → Taxa', value: cvr.cvrTaxa, prev: prevCvr?.cvrTaxa, target: 20 },
   ]
 
   return (
@@ -304,7 +237,7 @@ export function FunnelTable({
                 <td className="row-label">{row.label}</td>
                 {row.data.map((value, colIndex) => {
                   const isRealizadoRow = row.label === 'Realizado'
-                  const isClickable = isRealizadoRow && colIndex < 8 && deals.length > 0
+                  const isClickable = isRealizadoRow && colIndex < 5 && deals.length > 0
 
                   return (
                     <td
@@ -339,14 +272,14 @@ export function FunnelTable({
           <div className="metric-card">
             <div className="metric-card-label">Conversão Total</div>
             <div className="metric-card-value text-wedding-gold">{formatPercent(cvr.conversaoTotal)}</div>
-            <div className="metric-card-target">Leads → Vendas</div>
+            <div className="metric-card-target">Leads → Taxa</div>
           </div>
           <div className="metric-card">
-            <div className="metric-card-label">Custo por Venda</div>
+            <div className="metric-card-label">Custo por Taxa</div>
             <div className="metric-card-value">
-              {actualMetrics.vendas > 0 ? formatCurrency((cpl * actualMetrics.leads) / actualMetrics.vendas) : '—'}
+              {actualMetrics.taxa > 0 ? formatCurrency((cpl * actualMetrics.leads) / actualMetrics.taxa) : '—'}
             </div>
-            <div className="metric-card-target">Investimento / Vendas</div>
+            <div className="metric-card-target">Investimento / Taxas</div>
           </div>
           <div className="metric-card">
             <div className="metric-card-label">Média Score</div>

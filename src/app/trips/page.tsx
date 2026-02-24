@@ -3,36 +3,33 @@
 import { Suspense, useState, useEffect, useCallback } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import {
-  FunnelTable,
+  TripsTable,
   KPICards,
   MonthSelector,
-  ViewToggle,
   CleanupButton,
 } from '@/components/dashboard'
+import Link from 'next/link'
 import { getMonthProgress, calcAchievement } from '@/lib/utils'
 import {
-  fetchDealsForMonth,
-  calculateFunnelMetrics,
-  fetchMonthlyTarget,
-  fetchPreviousMonthMetrics,
-  fetchVendasForMonth,
+  fetchTripsDealsForMonth,
+  calculateTripsFunnelMetrics,
+  fetchTripsMonthlyTarget,
+  fetchPreviousTripsMetrics,
+  fetchTaxaForMonth,
   fetchMetaAdsSpend,
   fetchGoogleAdsSpend,
 } from '@/lib/queries'
-import type { FunnelMetrics, MonthlyTarget } from '@/lib/types'
+import type { TripsFunnelMetrics, MonthlyTarget } from '@/lib/types'
 
-const EMPTY_METRICS: FunnelMetrics = {
+const EMPTY_METRICS: TripsFunnelMetrics = {
   leads: 0,
   mql: 0,
   agendamento: 0,
   reunioes: 0,
-  qualificado: 0,
-  closerAgendada: 0,
-  closerRealizada: 0,
-  vendas: 0,
+  taxa: 0,
 }
 
-function WeddingDashboardContent() {
+function TripsDashboardContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -44,9 +41,9 @@ function WeddingDashboardContent() {
   const [selectedMonth, setSelectedMonth] = useState(
     urlMonth ? parseInt(urlMonth) : new Date().getMonth() + 1
   )
-  const [metrics, setMetrics] = useState<FunnelMetrics>(EMPTY_METRICS)
+  const [metrics, setMetrics] = useState<TripsFunnelMetrics>(EMPTY_METRICS)
   const [target, setTarget] = useState<MonthlyTarget | null>(null)
-  const [previousMetrics, setPreviousMetrics] = useState<FunnelMetrics | null>(null)
+  const [previousMetrics, setPreviousMetrics] = useState<TripsFunnelMetrics | null>(null)
   const [loading, setLoading] = useState(true)
   const [deals, setDeals] = useState<import('@/lib/types').Deal[]>([])
   const [totalSpend, setTotalSpend] = useState(0)
@@ -54,32 +51,32 @@ function WeddingDashboardContent() {
   const [totalClicks, setTotalClicks] = useState(0)
 
   const monthProgress = getMonthProgress(selectedYear, selectedMonth)
-  const resultProgress = target
-    ? calcAchievement(metrics.vendas, target.vendas)
+  const resultProgress = target?.taxa
+    ? calcAchievement(metrics.taxa, target.taxa)
     : 0
 
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      const [fetchedDeals, targetData, prevMetrics, vendasData, metaAds, googleAds] = await Promise.all([
-        fetchDealsForMonth(selectedYear, selectedMonth, 'wedding'),
-        fetchMonthlyTarget(selectedYear, selectedMonth, 'wedding'),
-        fetchPreviousMonthMetrics(selectedYear, selectedMonth, 'wedding'),
-        fetchVendasForMonth(selectedYear, selectedMonth, 'wedding'),
-        fetchMetaAdsSpend(selectedYear, selectedMonth, 'wedding'),
+      const [fetchedDeals, targetData, prevMetrics, taxaData, metaAds, googleAds] = await Promise.all([
+        fetchTripsDealsForMonth(selectedYear, selectedMonth),
+        fetchTripsMonthlyTarget(selectedYear, selectedMonth),
+        fetchPreviousTripsMetrics(selectedYear, selectedMonth),
+        fetchTaxaForMonth(selectedYear, selectedMonth),
+        fetchMetaAdsSpend(selectedYear, selectedMonth, 'trips'),
         fetchGoogleAdsSpend(selectedYear, selectedMonth),
       ])
 
-      // Combine deals: created_at deals + vendas deals (deduplicated)
+      // Combine deals: created_at deals + taxa deals (deduplicated)
       const allDeals = [
         ...fetchedDeals,
-        ...vendasData.deals.filter(d => !fetchedDeals.some(fd => fd.id === d.id))
+        ...taxaData.deals.filter(d => !fetchedDeals.some(fd => fd.id === d.id))
       ]
       setDeals(allDeals)
 
-      // Calculate metrics using allDeals (includes deals closed in month)
-      const baseMetrics = calculateFunnelMetrics(allDeals, selectedYear, selectedMonth)
-      setMetrics({ ...baseMetrics, vendas: vendasData.count })
+      // Calculate metrics
+      const baseMetrics = calculateTripsFunnelMetrics(allDeals, selectedYear, selectedMonth)
+      setMetrics({ ...baseMetrics, taxa: taxaData.count })
       setTarget(targetData)
       setPreviousMetrics(prevMetrics)
 
@@ -101,7 +98,7 @@ function WeddingDashboardContent() {
   const handleMonthChange = (year: number, month: number) => {
     setSelectedYear(year)
     setSelectedMonth(month)
-    router.push(`/wedding?year=${year}&month=${month}`, { scroll: false })
+    router.push(`/trips?year=${year}&month=${month}`, { scroll: false })
   }
 
   return (
@@ -114,14 +111,14 @@ function WeddingDashboardContent() {
               Dashboard —
               <select
                 className="bg-transparent border-b border-wedding-gold text-wedding-gold font-semibold cursor-pointer focus:outline-none"
-                value="wedding"
+                value="trips"
                 onChange={(e) => {
                   const path = e.target.value === 'trips' ? '/trips' : '/wedding'
                   router.push(`${path}?year=${selectedYear}&month=${selectedMonth}`)
                 }}
               >
-                <option value="wedding" className="bg-bg-dark text-txt-dark">WW</option>
                 <option value="trips" className="bg-bg-dark text-txt-dark">Trips</option>
+                <option value="wedding" className="bg-bg-dark text-txt-dark">WW</option>
               </select>
             </h1>
           </div>
@@ -132,7 +129,6 @@ function WeddingDashboardContent() {
               selectedMonth={selectedMonth}
               onChange={handleMonthChange}
             />
-            <ViewToggle year={selectedYear} month={selectedMonth} />
           </div>
         </div>
 
@@ -151,7 +147,7 @@ function WeddingDashboardContent() {
                 Carregando dados...
               </div>
             ) : (
-              <FunnelTable
+              <TripsTable
                 metrics={metrics}
                 target={target}
                 previousMetrics={previousMetrics}
@@ -171,10 +167,10 @@ function WeddingDashboardContent() {
   )
 }
 
-export default function WeddingDashboard() {
+export default function TripsDashboard() {
   return (
     <Suspense fallback={<div className="dash-page flex items-center justify-center loading-text">Carregando...</div>}>
-      <WeddingDashboardContent />
+      <TripsDashboardContent />
     </Suspense>
   )
 }

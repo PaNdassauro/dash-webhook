@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
 import type { Deal } from '@/lib/types'
 
-type StageKey = 'leads' | 'mql' | 'agendamento' | 'reunioes' | 'qualificado' | 'closerAgendada' | 'closerRealizada' | 'vendas'
+// WW stages + Trips stage (taxa)
+type StageKey = 'leads' | 'mql' | 'agendamento' | 'reunioes' | 'qualificado' | 'closerAgendada' | 'closerRealizada' | 'vendas' | 'taxa'
 
 interface DealsModalProps {
   isOpen: boolean
@@ -77,8 +78,8 @@ export function DealsModal({ isOpen, onClose, title, deals, stageKey }: DealsMod
       case 'agendamento':
       case 'reunioes':
         return [
-          { header: 'Data Reunião', getValue: (d) => formatDateTime(d.data_reuniao_1) },
-          { header: 'Como foi', getValue: (d) => d.como_reuniao_1 || '-' },
+          { header: 'Data Reunião', getValue: (d) => formatDateTime(d.data_reuniao_1 || d.data_reuniao_trips) },
+          { header: 'Como foi', getValue: (d) => d.como_reuniao_1 || d.como_reuniao_trips || '-' },
         ]
       case 'qualificado':
         return [
@@ -94,6 +95,11 @@ export function DealsModal({ isOpen, onClose, title, deals, stageKey }: DealsMod
       case 'vendas':
         return [
           { header: 'Data Fechamento', getValue: (d) => formatDateTime(d.data_fechamento) },
+        ]
+      case 'taxa':
+        return [
+          { header: 'Pagou Taxa', getValue: (d) => d.pagou_taxa ? 'Sim' : 'Não' },
+          { header: 'Data Reunião', getValue: (d) => formatDateTime(d.data_reuniao_trips) },
         ]
       default:
         return []

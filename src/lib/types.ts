@@ -23,6 +23,10 @@ export const DealSchema = z.object({
   reuniao_closer: z.string().nullable(),
   data_fechamento: z.string().nullable(),
   is_elopement: z.boolean().nullable(),
+  // Trips fields
+  data_reuniao_trips: z.string().nullable(),
+  como_reuniao_trips: z.string().nullable(),
+  pagou_taxa: z.boolean().nullable(),
 })
 
 export type Deal = z.infer<typeof DealSchema>
@@ -31,7 +35,7 @@ export type Deal = z.infer<typeof DealSchema>
 export const MonthlyTargetSchema = z.object({
   id: z.number().optional(),
   month: z.string(), // YYYY-MM-DD format
-  pipeline_type: z.enum(['elopement', 'wedding']),
+  pipeline_type: z.enum(['elopement', 'wedding', 'trips']),
   leads: z.number(),
   mql: z.number(),
   agendamento: z.number(),
@@ -41,11 +45,12 @@ export const MonthlyTargetSchema = z.object({
   closer_realizada: z.number(),
   vendas: z.number(),
   cpl: z.number(),
+  taxa: z.number().optional(), // Trips-specific
 })
 
 export type MonthlyTarget = z.infer<typeof MonthlyTargetSchema>
 
-// Funnel metrics for display
+// Funnel metrics for display (WW)
 export interface FunnelMetrics {
   leads: number
   mql: number
@@ -57,6 +62,15 @@ export interface FunnelMetrics {
   vendas: number
 }
 
+// Funnel metrics for Trips (5 stages)
+export interface TripsFunnelMetrics {
+  leads: number
+  mql: number
+  agendamento: number
+  reunioes: number
+  taxa: number
+}
+
 // Dashboard row types
 export interface FunnelRow {
   label: string
@@ -65,7 +79,7 @@ export interface FunnelRow {
 }
 
 // View types
-export type ViewType = 'wedding' | 'elopement'
+export type ViewType = 'wedding' | 'elopement' | 'trips'
 
 // Month selection
 export interface MonthSelection {

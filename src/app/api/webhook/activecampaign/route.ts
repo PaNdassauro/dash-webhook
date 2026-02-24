@@ -29,6 +29,7 @@ const WebhookPayloadSchema = z.object({
 
 // AC field IDs to DB columns mapping
 const FIELD_MAP: Record<string, string> = {
+  // WW fields
   '6': 'data_reuniao_1',        // Data e horário do agendamento da 1ª reunião
   '17': 'como_reuniao_1',       // Como foi feita a 1ª reunião?
   '18': 'data_closer',          // Data e horário do agendamento com a Closer
@@ -37,6 +38,10 @@ const FIELD_MAP: Record<string, string> = {
   '93': 'data_qualificado',     // Automático - WW - Data Qualificação SDR
   '169': 'qualificado_sql',     // Qualificado para SQL
   '299': 'reuniao_closer',      // WW | Como foi feita Reunião Closer
+  // Trips fields
+  '166': 'data_reuniao_trips',  // Data e horário do agendamento da 1a. Reunião SDR TRIPS
+  '167': 'como_reuniao_trips',  // Como foi feita a 1a. Reunião SDR TRIPS
+  '302': 'pagou_taxa',          // Pagou a taxa?
 }
 
 // Additional deal fields
@@ -140,9 +145,11 @@ export async function POST(request: NextRequest) {
             case 'data_qualificado':
             case 'data_closer':
             case 'data_fechamento':
+            case 'data_reuniao_trips':
               record[dbColumn] = parseDate(field.value)
               break
             case 'qualificado_sql':
+            case 'pagou_taxa':
               record[dbColumn] = parseBoolean(field.value)
               break
             default:

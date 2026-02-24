@@ -1,6 +1,6 @@
 import { format, getDaysInMonth, differenceInDays, startOfMonth, endOfMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import type { FunnelMetrics } from './types'
+import type { FunnelMetrics, TripsFunnelMetrics } from './types'
 
 // Format currency in BRL
 export function formatCurrency(value: number): string {
@@ -77,6 +77,17 @@ export function calcFunnelCVR(metrics: FunnelMetrics): Record<string, number> {
     cvrRr: calcConversionRate(metrics.closerAgendada, metrics.closerRealizada),
     cvrVenda: calcConversionRate(metrics.closerRealizada, metrics.vendas),
     conversaoTotal: calcConversionRate(metrics.leads, metrics.vendas),
+  }
+}
+
+// Calculate conversion rates for Trips funnel (5 stages)
+export function calcTripsFunnelCVR(metrics: TripsFunnelMetrics): Record<string, number> {
+  return {
+    cvrMql: calcConversionRate(metrics.leads, metrics.mql),
+    cvrAg: calcConversionRate(metrics.mql, metrics.agendamento),
+    cvrReu: calcConversionRate(metrics.agendamento, metrics.reunioes),
+    cvrTaxa: calcConversionRate(metrics.reunioes, metrics.taxa),
+    conversaoTotal: calcConversionRate(metrics.leads, metrics.taxa),
   }
 }
 

@@ -1,5 +1,6 @@
 export { FunnelTable } from './FunnelTable'
 export { ElopementTable } from './ElopementTable'
+export { TripsTable } from './TripsTable'
 export { KPICards } from './KPICards'
 export { HeaderStats } from './HeaderStats'
 export { MonthSelector } from './MonthSelector'

@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { Deal, FunnelMetrics, MonthlyTarget, ViewType } from './types'
+import type { Deal, FunnelMetrics, TripsFunnelMetrics, MonthlyTarget, ViewType } from './types'
 import { getMonthDateRange } from './utils'
 
 // Fetch deals for a specific month and view type
@@ -42,11 +42,19 @@ export async function fetchDealsForMonth(
   }
 }
 
+// WW Pipelines
 // Leads Pipelines: 1 (SDR), 3 (Closer), 4 (Planejamento), 17 (Internacional), 31 (Desqualificados)
 const LEADS_PIPELINES = ['SDR Weddings', 'Closer Weddings', 'Planejamento Weddings', 'WW - Internacional', 'Outros Desqualificados | Wedding']
 
 // MQL Pipelines: only 1 (SDR), 3 (Closer), 4 (Planejamento)
 const MQL_PIPELINES = ['SDR Weddings', 'Closer Weddings', 'Planejamento Weddings']
+
+// Trips Pipelines
+// Leads: Pipe 6 (Consultoras), Pipe 8 (SDR), Pipe 34 (Desqualificados)
+const TRIPS_LEADS_PIPELINES = ['Consultoras TRIPS', 'SDR - Trips', 'WTN - Desqualificados']
+
+// MQL: Pipe 6 (Consultoras), Pipe 8 (SDR) - excludes desqualificados
+const TRIPS_MQL_PIPELINES = ['Consultoras TRIPS', 'SDR - Trips']
 
 // Helper to check if a date falls within a specific month
 function isInMonth(dateStr: string | null, year: number, month: number): boolean {
@@ -307,4 +315,131 @@ export async function fetchGoogleAdsSpend(
     console.error('Error fetching Google Ads data:', error)
     return { spend: 0, impressions: 0, clicks: 0, cpc: 0, cpm: 0 }
   }
+}
+
+// ============================================
+// TRIPS FUNCTIONS
+// ============================================
+
+// Fetch Trips deals for a specific month
+export async function fetchTripsDealsForMonth(
+  year: number,
+  month: number
+): Promise<Deal[]> {
+  const { start, end } = getMonthDateRange(year, month)
+
+  const { data, error } = await supabase
+    .from('deals')
+    .select('*')
+    .gte('created_at', start.toISOString())
+    .lte('created_at', end.toISOString())
+    .in('pipeline', TRIPS_LEADS_PIPELINES)
+
+  if (error) {
+    console.error('Error fetching trips deals:', error)
+    return []
+  }
+  return data as Deal[]
+}
+
+// Calculate Trips funnel metrics (5 stages)
+// Funnel: Lead -> MQL -> Agendamento -> Reunião -> Taxa
+export function calculateTripsFunnelMetrics(deals: Deal[], year: number, month: number): TripsFunnelMetrics {
+  // Leads: pipes 6, 8, 34 + CREATED IN MONTH
+  const leadsDeals = deals.filter(d =>
+    d.pipeline &&
+    TRIPS_LEADS_PIPELINES.includes(d.pipeline) &&
+    isCreatedInMonth(d, year, month)
+  )
+
+  // MQL: only pipes 6, 8 + CREATED IN MONTH
+  const mqlDeals = deals.filter(d =>
+    d.pipeline &&
+    TRIPS_MQL_PIPELINES.includes(d.pipeline) &&
+    isCreatedInMonth(d, year, month)
+  )
+
+  // All Trips deals (for metrics that can include deals created in other months)
+  const allTripsDeals = deals.filter(d =>
+    d.pipeline &&
+    TRIPS_LEADS_PIPELINES.includes(d.pipeline)
+  )
+
+  return {
+    leads: leadsDeals.length,
+    mql: mqlDeals.length,
+    // Agendamento: data_reuniao_trips falls within the selected month
+    agendamento: allTripsDeals.filter(d => isInMonth(d.data_reuniao_trips, year, month)).length,
+    // Reunião: agendamento in month + como_reuniao_trips filled
+    reunioes: allTripsDeals.filter(d =>
+      isInMonth(d.data_reuniao_trips, year, month) &&
+      d.como_reuniao_trips !== null &&
+      d.como_reuniao_trips !== ''
+    ).length,
+    // Taxa: pagou_taxa = true
+    taxa: allTripsDeals.filter(d => d.pagou_taxa === true).length,
+  }
+}
+
+// Fetch Taxa count for Trips (deals that paid the fee)
+export async function fetchTaxaForMonth(
+  year: number,
+  month: number
+): Promise<{ count: number; deals: Deal[] }> {
+  // Taxa is not date-bound in the same way as vendas
+  // We count all deals in Trips pipelines with pagou_taxa = true
+  const { data, error } = await supabase
+    .from('deals')
+    .select('*')
+    .in('pipeline', TRIPS_LEADS_PIPELINES)
+    .eq('pagou_taxa', true)
+
+  if (error) {
+    console.error('Error fetching trips taxa:', error)
+    return { count: 0, deals: [] }
+  }
+
+  // Filter by created_at month if needed, or return all
+  const filteredDeals = (data as Deal[]).filter(d => isCreatedInMonth(d, year, month))
+
+  return { count: filteredDeals.length, deals: filteredDeals }
+}
+
+// Fetch previous month metrics for Trips
+export async function fetchPreviousTripsMetrics(
+  year: number,
+  month: number
+): Promise<TripsFunnelMetrics> {
+  let prevYear = year
+  let prevMonth = month - 1
+
+  if (prevMonth === 0) {
+    prevMonth = 12
+    prevYear = year - 1
+  }
+
+  const deals = await fetchTripsDealsForMonth(prevYear, prevMonth)
+  return calculateTripsFunnelMetrics(deals, prevYear, prevMonth)
+}
+
+// Fetch monthly target for Trips
+export async function fetchTripsMonthlyTarget(
+  year: number,
+  month: number
+): Promise<MonthlyTarget | null> {
+  const monthStr = `${year}-${String(month).padStart(2, '0')}-01`
+
+  const { data, error } = await supabase
+    .from('monthly_targets')
+    .select('*')
+    .eq('month', monthStr)
+    .eq('pipeline_type', 'trips')
+    .maybeSingle()
+
+  if (error) {
+    console.error('Error fetching trips target:', error)
+    return null
+  }
+
+  return data as MonthlyTarget | null
 }

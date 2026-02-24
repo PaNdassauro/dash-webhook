@@ -4,9 +4,9 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 const VIEWS = [
-  { href: '/total', label: 'Total' },
-  { href: '/wedding', label: 'WW General' },
+  { href: '/wedding', label: 'WW' },
   { href: '/elopement', label: 'Elopement' },
+  { href: '/total', label: 'Total' },
 ]
 
 interface ViewToggleProps {
