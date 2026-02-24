@@ -3,14 +3,28 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
 import type { Deal } from '@/lib/types'
 
+type StageKey = 'leads' | 'mql' | 'agendamento' | 'reunioes' | 'qualificado' | 'closerAgendada' | 'closerRealizada' | 'vendas'
+
 interface DealsModalProps {
   isOpen: boolean
   onClose: () => void
   title: string
   deals: Deal[]
+  stageKey?: StageKey
 }
 
-export function DealsModal({ isOpen, onClose, title, deals }: DealsModalProps) {
+const formatDate = (dateStr: string | null) => {
+  if (!dateStr) return '-'
+  return new Date(dateStr).toLocaleDateString('pt-BR')
+}
+
+const formatDateTime = (dateStr: string | null) => {
+  if (!dateStr) return '-'
+  const date = new Date(dateStr)
+  return `${date.toLocaleDateString('pt-BR')} ${date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
+}
+
+export function DealsModal({ isOpen, onClose, title, deals, stageKey }: DealsModalProps) {
   const modalRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const [search, setSearch] = useState('')
@@ -57,6 +71,71 @@ export function DealsModal({ isOpen, onClose, title, deals }: DealsModalProps) {
     return <span className="badge-open">{s}</span>
   }
 
+  // Get extra columns based on stage
+  const getExtraColumns = (): { header: string; getValue: (d: Deal) => string }[] => {
+    switch (stageKey) {
+      case 'agendamento':
+      case 'reunioes':
+        return [
+          { header: 'Data Reunião', getValue: (d) => formatDateTime(d.data_reuniao_1) },
+          { header: 'Como foi', getValue: (d) => d.como_reuniao_1 || '-' },
+        ]
+      case 'qualificado':
+        return [
+          { header: 'Data Qualificação', getValue: (d) => formatDate(d.data_qualificado) },
+          { header: 'SQL', getValue: (d) => d.qualificado_sql ? 'Sim' : 'Não' },
+        ]
+      case 'closerAgendada':
+      case 'closerRealizada':
+        return [
+          { header: 'Data Closer', getValue: (d) => formatDateTime(d.data_closer) },
+          { header: 'Como foi Closer', getValue: (d) => d.reuniao_closer || '-' },
+        ]
+      case 'vendas':
+        return [
+          { header: 'Data Fechamento', getValue: (d) => formatDateTime(d.data_fechamento) },
+        ]
+      default:
+        return []
+    }
+  }
+
+  const extraColumns = getExtraColumns()
+
+  const exportToCSV = () => {
+    const baseHeaders = ['ID', 'Título', 'Pipeline', 'Stage', 'Status', 'Criado']
+    const extraHeaders = extraColumns.map(c => c.header)
+    const headers = [...baseHeaders, ...extraHeaders, 'Nome Noivo', 'Destino', 'Orçamento']
+
+    const rows = filteredDeals.map(d => [
+      d.id,
+      d.title || '',
+      d.pipeline || '',
+      d.stage || '',
+      d.status || 'Open',
+      d.created_at ? new Date(d.created_at).toLocaleDateString('pt-BR') : '',
+      ...extraColumns.map(c => c.getValue(d)),
+      d.nome_noivo || '',
+      d.destino || '',
+      d.orcamento || ''
+    ])
+
+    const csvContent = [
+      headers.join(';'),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(';'))
+    ].join('\n')
+
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${title.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const totalColumns = 6 + extraColumns.length
+
   return (
     <div
       className="modal-backdrop"
@@ -68,9 +147,18 @@ export function DealsModal({ isOpen, onClose, title, deals }: DealsModalProps) {
           <h2 className="modal-title">
             {title} ({filteredDeals.length}{search ? ` de ${deals.length}` : ''})
           </h2>
-          <button onClick={onClose} className="modal-close">
-            ×
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={exportToCSV}
+              className="px-3 py-1.5 text-sm bg-wedding-gold text-white rounded hover:bg-wedding-gold/90 transition-colors"
+              title="Exportar CSV"
+            >
+              Exportar CSV
+            </button>
+            <button onClick={onClose} className="modal-close">
+              ×
+            </button>
+          </div>
         </div>
 
         {/* Search */}
@@ -86,7 +174,7 @@ export function DealsModal({ isOpen, onClose, title, deals }: DealsModalProps) {
         </div>
 
         {/* Table */}
-        <div className="flex-1 flex flex-col overflow-hidden px-5 pb-5">
+        <div className="flex-1 overflow-auto px-5 pb-5">
           <table className="modal-table">
             <thead>
               <tr>
@@ -96,37 +184,39 @@ export function DealsModal({ isOpen, onClose, title, deals }: DealsModalProps) {
                 <th>Stage</th>
                 <th>Status</th>
                 <th>Criado</th>
+                {extraColumns.map((col, i) => (
+                  <th key={i} style={{ color: 'var(--gold)' }}>{col.header}</th>
+                ))}
               </tr>
             </thead>
+            <tbody>
+              {filteredDeals.map((deal) => (
+                <tr key={deal.id}>
+                  <td className="font-mono text-xs">{deal.id}</td>
+                  <td>{deal.title || '-'}</td>
+                  <td>{deal.pipeline || '-'}</td>
+                  <td>{deal.stage || '-'}</td>
+                  <td>{getStatusBadge(deal.status ?? undefined)}</td>
+                  <td className="text-xs">
+                    {deal.created_at
+                      ? new Date(deal.created_at).toLocaleDateString('pt-BR')
+                      : '-'
+                  }
+                  </td>
+                  {extraColumns.map((col, i) => (
+                    <td key={i} className="text-xs" style={{ color: 'var(--gold)' }}>{col.getValue(deal)}</td>
+                  ))}
+                </tr>
+              ))}
+              {filteredDeals.length === 0 && (
+                <tr>
+                  <td colSpan={totalColumns} className="text-center py-8 !text-txt-muted dark:!text-txt-dark-muted">
+                    {search ? 'Nenhum resultado encontrado' : 'Nenhum deal encontrado'}
+                  </td>
+                </tr>
+              )}
+            </tbody>
           </table>
-          <div className="overflow-auto flex-1">
-            <table className="modal-table">
-              <tbody>
-                {filteredDeals.map((deal) => (
-                  <tr key={deal.id}>
-                    <td className="font-mono text-xs">{deal.id}</td>
-                    <td>{deal.title || '-'}</td>
-                    <td>{deal.pipeline || '-'}</td>
-                    <td>{deal.stage || '-'}</td>
-                    <td>{getStatusBadge(deal.status ?? undefined)}</td>
-                    <td className="text-xs">
-                      {deal.created_at
-                        ? new Date(deal.created_at).toLocaleDateString('pt-BR')
-                        : '-'
-                    }
-                    </td>
-                  </tr>
-                ))}
-                {filteredDeals.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="text-center py-8 !text-txt-muted dark:!text-txt-dark-muted">
-                      {search ? 'Nenhum resultado encontrado' : 'Nenhum deal encontrado'}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
         </div>
       </div>
     </div>

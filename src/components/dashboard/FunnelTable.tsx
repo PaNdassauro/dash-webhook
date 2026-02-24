@@ -29,8 +29,18 @@ const FUNNEL_COLUMNS = [
   'Vendas',
 ]
 
-// WW Pipelines: 1 (SDR), 3 (Closer), 4 (Planejamento), 17 (Internacional), 31 (Desqualificados)
-const WW_PIPELINES = ['SDR Weddings', 'Closer Weddings', 'Planejamento Weddings', 'WW - Internacional', 'Outros Desqualificados | Wedding']
+// Leads Pipelines: 1 (SDR), 3 (Closer), 4 (Planejamento), 17 (Internacional), 31 (Desqualificados)
+const LEADS_PIPELINES = ['SDR Weddings', 'Closer Weddings', 'Planejamento Weddings', 'WW - Internacional', 'Outros Desqualificados | Wedding']
+
+// MQL Pipelines: only 1 (SDR), 3 (Closer), 4 (Planejamento)
+const MQL_PIPELINES = ['SDR Weddings', 'Closer Weddings', 'Planejamento Weddings']
+
+// Helper to check if deal is Elopement (title starts with EW only)
+// DW = Destination Wedding, counts in WW General
+function isElopementTitle(title: string | null): boolean {
+  if (!title) return false
+  return title.startsWith('EW')
+}
 
 // Helper to check if a date falls within a specific month
 function isInMonth(dateStr: string | null, year: number, month: number): boolean {
@@ -56,17 +66,37 @@ export function FunnelTable({
   const [modalOpen, setModalOpen] = useState(false)
   const [modalTitle, setModalTitle] = useState('')
   const [modalDeals, setModalDeals] = useState<Deal[]>([])
+  const [modalStageKey, setModalStageKey] = useState<StageKey>('leads')
 
   const cvr = calcFunnelCVR(metrics)
   const prevCvr = previousMetrics ? calcFunnelCVR(previousMetrics) : null
+
+  // Helper to check if deal was created in the selected month
+  const isCreatedInMonth = (d: Deal): boolean => {
+    if (!d.created_at) return false
+    const date = new Date(d.created_at)
+    return date.getFullYear() === year && date.getMonth() + 1 === month
+  }
 
   // Filter deals by stage
   const getDealsForStage = (stage: StageKey): Deal[] => {
     switch (stage) {
       case 'leads':
-        return deals.filter(d => d.pipeline && WW_PIPELINES.includes(d.pipeline))
+        // Leads must be created in the selected month
+        return deals.filter(d =>
+          d.pipeline &&
+          LEADS_PIPELINES.includes(d.pipeline) &&
+          !isElopementTitle(d.title) &&
+          isCreatedInMonth(d)
+        )
       case 'mql':
-        return deals.filter(d => d.pipeline && WW_PIPELINES.includes(d.pipeline))
+        // MQL must be created in the selected month
+        return deals.filter(d =>
+          d.pipeline &&
+          MQL_PIPELINES.includes(d.pipeline) &&
+          !isElopementTitle(d.title) &&
+          isCreatedInMonth(d)
+        )
       case 'agendamento':
         return deals.filter(d => isInMonth(d.data_reuniao_1, year, month))
       case 'reunioes':
@@ -99,6 +129,7 @@ export function FunnelTable({
     if (!deals.length) return
     setModalTitle(title)
     setModalDeals(getDealsForStage(stage))
+    setModalStageKey(stage)
     setModalOpen(true)
   }
 
@@ -376,6 +407,7 @@ export function FunnelTable({
         onClose={() => setModalOpen(false)}
         title={modalTitle}
         deals={modalDeals}
+        stageKey={modalStageKey}
       />
     </>
   )

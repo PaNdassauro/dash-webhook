@@ -289,7 +289,7 @@ body {
   }
 
   .modal-content {
-    @apply w-full max-w-4xl max-h-[80vh] flex flex-col;
+    @apply w-full max-w-7xl max-h-[90vh] flex flex-col;
     background: var(--bg-surface);
     border: 1px solid var(--border-gold);
     border-radius: var(--radius);
@@ -343,7 +343,8 @@ body {
 
   .modal-table thead {
     @apply sticky top-0 z-10;
-    background: var(--bg-surface-alt);
+    background: var(--bg-surface);
+    box-shadow: 0 1px 0 var(--border-light);
   }
 
   .modal-table th {

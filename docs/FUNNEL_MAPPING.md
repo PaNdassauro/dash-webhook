@@ -6,6 +6,32 @@ This document maps Active Campaign fields to dashboard funnel metrics for the WW
 
 ---
 
+## REGRAS IMPORTANTES
+
+### Identificação de Elopement vs WW
+
+Um deal é considerado **Elopement** se:
+- Está no pipeline 12 (Elopment Wedding) **OU**
+- O título começa com "EW"
+
+**Prefixos de título:**
+- **EW** = Elopement Wedding → conta no Elopement
+- **DW** = Destination Wedding → conta no WW General
+
+**IMPORTANTE**: Mesmo que um deal esteja nos pipes de WW (1, 3, 4, 17, 31), se o título começar com "EW", ele é Elopement e NÃO deve contar no WW General.
+
+### Regras de Contagem por Métrica
+
+| Métrica | Pipelines | Filtro de Data | Filtro de Título |
+|---------|-----------|----------------|------------------|
+| **Leads (WW)** | 1, 3, 4, 17, 31 | Criado no mês | Excluir EW |
+| **MQL** | 1, 3, 4 apenas | Criado no mês | Excluir EW |
+| **Vendas (WW)** | - | data_fechamento no mês | Excluir EW |
+| **Leads (Elopement)** | 12 OU título EW | Criado no mês | - |
+| **Vendas (Elopement)** | 12 OU título EW | data_fechamento no mês | - |
+
+---
+
 ## Pipelines
 
 | Pipe # | Name | Type | In Dashboard |
@@ -27,14 +53,14 @@ Lead → MQL → Agendamento → Reunião → Qualificado → Closer Agendada �
 
 | # | Stage | Field (Deal) | AC Field ID | DB Column | Logic |
 |---|-------|-------------|-------------|-----------|-------|
-| 1 | **Lead** | Deal created | - | `created_at` | Deal exists in 2026 |
-| 2 | **MQL** | Pipeline | - | `pipeline` | Pipeline IN ('SDR Weddings', 'Closer Weddings', 'Planejamento Weddings') |
+| 1 | **Lead** | Deal created | - | `created_at` | Created in month + Pipeline IN (1, 3, 4, 17, 31) + Title NOT starts with EW |
+| 2 | **MQL** | Pipeline | - | `pipeline` | Created in month + Pipeline IN (1, 3, 4) only + Title NOT starts with EW |
 | 3 | **Agendamento** | `Data e horário do agendamento da 1ª reunião` | 6 | `data_reuniao_1` | Date falls within selected month |
 | 4 | **Reunião** | `Como foi feita a 1ª reunião?` | 17 | `como_reuniao_1` | Agendamento in month + filled + != "Não teve reunião" |
 | 5 | **Qualificado** | `Automático - WW - Data Qualificação SDR` + `Qualificado para SQL` | 93 / 169 | `data_qualificado` / `qualificado_sql` | Date in month OR sql = true |
 | 6 | **Closer Agendada** | `Data e horário do agendamento com a Closer:` | 18 | `data_closer` | Date in month OR (created in month + field filled) |
 | 7 | **Closer Realizada** | `WW \| Como foi feita Reunião Closer` | 299 | `reuniao_closer` | Field is filled |
-| 8 | **Venda** | `[WW] [Closer] Data-Hora Ganho` | 87 | `data_fechamento` | Date in month + title NOT starts with "EW" |
+| 8 | **Venda** | `[WW] [Closer] Data-Hora Ganho` | 87 | `data_fechamento` | data_fechamento in month (pode ser lead criado em outro mês) |
 
 ---
 
@@ -46,10 +72,36 @@ Lead → Venda
 
 | # | Stage | Logic |
 |---|-------|-------|
-| 1 | **Lead** | Deal exists in pipeline "Elopment Wedding" |
-| 2 | **Venda** | Deal status = 'Won' |
+| 1 | **Lead** | Pipeline = "Elopment Wedding" (12) **OU** título começa com "EW" |
+| 2 | **Venda** | data_fechamento in month |
 
 *Note: Elopement deals don't track intermediate funnel stages (MQL, Reunião, etc.)*
+
+---
+
+## Dashboard Views
+
+### 1. WW General (Full Funnel)
+
+**Filtros aplicados:**
+- `is_elopement = false`
+- `title NOT ILIKE 'EW%'`
+- Pipeline IN (1, 3, 4, 17, 31) para Leads
+- Pipeline IN (1, 3, 4) para MQL
+
+**Colunas**: All 8 funnel stages + CVR + CPL
+
+### 2. Elopement (Simplified)
+
+**Filtros aplicados:**
+- `is_elopement = true` **OU** `title ILIKE 'EW%'`
+
+**Colunas**: Leads, Vendas, CVR
+
+### 3. Total (Combined)
+
+- **Leads**: WW + Elopement
+- **Funnel metrics**: WW only (Elopement doesn't track intermediate stages)
 
 ---
 
@@ -83,25 +135,6 @@ Lead → Venda
 
 ---
 
-## Dashboard Views
-
-### 1. WW General (Full Funnel)
-
-- **Filter**: `is_elopement = false` AND `pipeline != 'Outros Desqualificados | Wedding'`
-- **Columns**: All 8 funnel stages + CVR + CPL
-
-### 2. Elopement (Simplified)
-
-- **Filter**: `is_elopement = true`
-- **Columns**: Leads, Vendas, CVR
-
-### 3. Total (Combined)
-
-- **Leads**: WW + Elopement
-- **Funnel metrics**: WW only (Elopement doesn't track intermediate stages)
-
----
-
 ## Excel Import Columns (deals-used-only.xlsx)
 
 | Col # | Header | Maps To |
@@ -129,15 +162,24 @@ Lead → Venda
 
 ---
 
-## Verification (January 2026)
+## Exemplos de Casos Especiais
 
-| Metric | Expected | Notes |
-|--------|----------|-------|
-| Leads | 349 | WW + Elopement (excl Desqualificados) |
-| MQL | 237 | Pipes 1, 3, 4 only |
-| Agendamento | 81 | data_reuniao_1 date in selected month |
-| Reuniões | 60 | Agendamento in month + como_reuniao_1 filled + != "Não teve reunião" |
-| Qualificado | 46 | data_qualificado in month OR qualificado_sql = true |
-| Closer Agendada | 40 | data_closer date in month OR (deal created in month + data_closer filled) |
-| Closer Realizada | 38 | reuniao_closer filled |
-| Vendas | 2 | data_fechamento in month + title NOT starts with "EW" |
+### Caso 1: Deal com título "EW | Karen e Paulo" no pipeline "Planejamento Weddings"
+
+- **NÃO conta** como Lead no WW General (título começa com EW)
+- **NÃO conta** como MQL no WW General (título começa com EW)
+- **CONTA** como Elopement Lead
+- Se tiver data_fechamento no mês, **CONTA** como Elopement Venda
+
+### Caso 2: Deal com título "DW | Laura e Valdir" no pipeline "Planejamento Weddings"
+
+- **CONTA** como Lead no WW General (DW = Destination Wedding)
+- **CONTA** como MQL no WW General
+- Segue o funil completo WW
+- **NÃO conta** como Elopement
+
+### Caso 3: Deal normal no pipeline "SDR Weddings"
+
+- **CONTA** como Lead no WW General
+- **CONTA** como MQL no WW General
+- Segue o funil completo WW

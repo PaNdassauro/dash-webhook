@@ -6,8 +6,11 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-// WW Pipelines: 1 (SDR), 3 (Closer), 4 (Planejamento), 17 (Internacional), 31 (Desqualificados)
-const WW_PIPELINES = ['SDR Weddings', 'Closer Weddings', 'Planejamento Weddings', 'WW - Internacional', 'Outros Desqualificados | Wedding']
+// Leads Pipelines: 1 (SDR), 3 (Closer), 4 (Planejamento), 17 (Internacional), 31 (Desqualificados)
+const LEADS_PIPELINES = ['SDR Weddings', 'Closer Weddings', 'Planejamento Weddings', 'WW - Internacional', 'Outros Desqualificados | Wedding']
+
+// MQL Pipelines: only 1 (SDR), 3 (Closer), 4 (Planejamento)
+const MQL_PIPELINES = ['SDR Weddings', 'Closer Weddings', 'Planejamento Weddings']
 
 function isInMonth(dateStr: string | null, year: number, month: number): boolean {
   if (!dateStr) return false
@@ -28,9 +31,12 @@ async function check() {
     return created && created.getMonth() + 1 === month && created.getFullYear() === year && !d.is_elopement
   })
 
+  // Filter by LEADS_PIPELINES first
+  const leadsDeals = jan.filter(d => d.pipeline && LEADS_PIPELINES.includes(d.pipeline))
+
   console.log('=== January 2026 WW Only (from Supabase) ===')
-  console.log('Leads:', jan.length)
-  console.log('MQL (pipes 1,3,4,17):', jan.filter(d => d.pipeline && WW_PIPELINES.includes(d.pipeline)).length)
+  console.log('Leads (pipes 1,3,4,17,31):', leadsDeals.length)
+  console.log('MQL (pipes 1,3,4):', jan.filter(d => d.pipeline && MQL_PIPELINES.includes(d.pipeline)).length)
   console.log('Agendamento (date in Jan):', jan.filter(d => isInMonth(d.data_reuniao_1, year, month)).length)
   console.log('Reuniões:', jan.filter(d =>
     isInMonth(d.data_reuniao_1, year, month) &&
