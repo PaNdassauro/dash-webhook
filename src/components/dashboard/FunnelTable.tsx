@@ -29,8 +29,8 @@ const FUNNEL_COLUMNS = [
   'Vendas',
 ]
 
-// MQL pipelines
-const MQL_PIPELINES = ['SDR Weddings', 'Closer Weddings', 'Planejamento Weddings']
+// WW Pipelines: 1 (SDR), 3 (Closer), 4 (Planejamento), 17 (Internacional), 31 (Desqualificados)
+const WW_PIPELINES = ['SDR Weddings', 'Closer Weddings', 'Planejamento Weddings', 'WW - Internacional', 'Outros Desqualificados | Wedding']
 
 // Helper to check if a date falls within a specific month
 function isInMonth(dateStr: string | null, year: number, month: number): boolean {
@@ -64,9 +64,9 @@ export function FunnelTable({
   const getDealsForStage = (stage: StageKey): Deal[] => {
     switch (stage) {
       case 'leads':
-        return deals.filter(d => isInMonth(d.created_at, year, month))
+        return deals.filter(d => d.pipeline && WW_PIPELINES.includes(d.pipeline))
       case 'mql':
-        return deals.filter(d => d.pipeline && MQL_PIPELINES.includes(d.pipeline))
+        return deals.filter(d => d.pipeline && WW_PIPELINES.includes(d.pipeline))
       case 'agendamento':
         return deals.filter(d => isInMonth(d.data_reuniao_1, year, month))
       case 'reunioes':

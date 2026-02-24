@@ -6,7 +6,8 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-const MQL_PIPELINES = ['SDR Weddings', 'Closer Weddings', 'Planejamento Weddings']
+// WW Pipelines: 1 (SDR), 3 (Closer), 4 (Planejamento), 17 (Internacional), 31 (Desqualificados)
+const WW_PIPELINES = ['SDR Weddings', 'Closer Weddings', 'Planejamento Weddings', 'WW - Internacional', 'Outros Desqualificados | Wedding']
 
 function isInMonth(dateStr: string | null, year: number, month: number): boolean {
   if (!dateStr) return false
@@ -29,7 +30,7 @@ async function check() {
 
   console.log('=== January 2026 WW Only (from Supabase) ===')
   console.log('Leads:', jan.length)
-  console.log('MQL (pipes 1,3,4):', jan.filter(d => d.pipeline && MQL_PIPELINES.includes(d.pipeline)).length)
+  console.log('MQL (pipes 1,3,4,17):', jan.filter(d => d.pipeline && WW_PIPELINES.includes(d.pipeline)).length)
   console.log('Agendamento (date in Jan):', jan.filter(d => isInMonth(d.data_reuniao_1, year, month)).length)
   console.log('Reuniões:', jan.filter(d =>
     isInMonth(d.data_reuniao_1, year, month) &&

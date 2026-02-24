@@ -42,8 +42,8 @@ export async function fetchDealsForMonth(
   }
 }
 
-// MQL pipelines: 1 (SDR Weddings), 3 (Closer Weddings), 4 (Planejamento Weddings)
-const MQL_PIPELINES = ['SDR Weddings', 'Closer Weddings', 'Planejamento Weddings']
+// WW Pipelines: 1 (SDR), 3 (Closer), 4 (Planejamento), 17 (Internacional), 31 (Desqualificados)
+const WW_PIPELINES = ['SDR Weddings', 'Closer Weddings', 'Planejamento Weddings', 'WW - Internacional', 'Outros Desqualificados | Wedding']
 
 // Helper to check if a date falls within a specific month
 function isInMonth(dateStr: string | null, year: number, month: number): boolean {
@@ -55,34 +55,36 @@ function isInMonth(dateStr: string | null, year: number, month: number): boolean
 // Calculate funnel metrics from deals
 // WW Funnel: Lead -> MQL -> Agendamento -> Reuniao -> Qualificado -> Closer Agendada -> Closer Realizada -> Venda
 export function calculateFunnelMetrics(deals: Deal[], year: number, month: number): FunnelMetrics {
+  // Filter deals to only WW pipelines (excludes "Outros Desqualificados | Wedding")
+  const wwDeals = deals.filter(d => d.pipeline && WW_PIPELINES.includes(d.pipeline))
+
   return {
-    leads: deals.length,
-    // MQL: deals in pipelines 1, 3, or 4 (SDR, Closer, Planejamento)
-    mql: deals.filter(d => d.pipeline && MQL_PIPELINES.includes(d.pipeline)).length,
+    leads: wwDeals.length,
+    // MQL: deals in WW pipelines (1, 3, 4, 17)
+    mql: wwDeals.length,
     // Agendamento: data_reuniao_1 falls within the selected month
-    agendamento: deals.filter(d => isInMonth(d.data_reuniao_1, year, month)).length,
+    agendamento: wwDeals.filter(d => isInMonth(d.data_reuniao_1, year, month)).length,
     // Reuniao: agendamento in month + como_reuniao_1 filled + not "Não teve reunião"
-    reunioes: deals.filter(d =>
+    reunioes: wwDeals.filter(d =>
       isInMonth(d.data_reuniao_1, year, month) &&
       d.como_reuniao_1 !== null &&
       d.como_reuniao_1 !== '' &&
       d.como_reuniao_1 !== 'Não teve reunião'
     ).length,
     // Qualificado: data_qualificado in month OR qualificado_sql = true
-    qualificado: deals.filter(d =>
+    qualificado: wwDeals.filter(d =>
       isInMonth(d.data_qualificado, year, month) ||
       d.qualificado_sql === true
     ).length,
     // Closer Agendada: data_closer falls within the selected month OR deal created in month has data_closer filled
-    closerAgendada: deals.filter(d =>
+    closerAgendada: wwDeals.filter(d =>
       isInMonth(d.data_closer, year, month) ||
       (d.data_closer !== null && d.data_closer !== '')
     ).length,
     // Closer Realizada: field 299 "WW | Como foi feita Reunião Closer" is filled
-    closerRealizada: deals.filter(d => d.reuniao_closer !== null && d.reuniao_closer !== '').length,
+    closerRealizada: wwDeals.filter(d => d.reuniao_closer !== null && d.reuniao_closer !== '').length,
     // Venda: data_fechamento falls within the selected month
-    // (EW deals are already filtered out at query level for WW)
-    vendas: deals.filter(d => isInMonth(d.data_fechamento, year, month)).length,
+    vendas: wwDeals.filter(d => isInMonth(d.data_fechamento, year, month)).length,
   }
 }
 

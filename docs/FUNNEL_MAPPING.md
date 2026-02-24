@@ -14,8 +14,8 @@ This document maps Active Campaign fields to dashboard funnel metrics for the WW
 | 3 | Closer Weddings | WW | Yes - Full funnel |
 | 4 | Planejamento Weddings | WW | Yes - Full funnel |
 | 12 | Elopment Wedding | Elopement | Yes - Simplified (Leads → Vendas) |
-| - | WW - Internacional | WW | Yes - Full funnel |
-| - | Outros Desqualificados \| Wedding | Excluded | No |
+| 17 | WW - Internacional | WW | Yes - Full funnel |
+| 31 | Outros Desqualificados \| Wedding | WW | Yes - Full funnel |
 
 ---
 
