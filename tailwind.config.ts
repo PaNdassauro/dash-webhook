@@ -23,6 +23,13 @@ const config: Config = {
           'warm-gray': '#6B6B6B',
         },
 
+        // Trips palette (light blue)
+        trips: {
+          blue: '#5BA4D9',
+          'blue-dark': '#4A8FC2',
+          'blue-light': '#7BB8E5',
+        },
+
         // Pastel semantic colors
         pastel: {
           green: '#7CB77B',

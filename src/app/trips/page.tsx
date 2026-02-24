@@ -7,8 +7,8 @@ import {
   KPICards,
   MonthSelector,
   CleanupButton,
+  BusinessToggle,
 } from '@/components/dashboard'
-import Link from 'next/link'
 import { getMonthProgress, calcAchievement } from '@/lib/utils'
 import {
   fetchTripsDealsForMonth,
@@ -107,20 +107,7 @@ function TripsDashboardContent() {
         {/* Header */}
         <div className="dash-header">
           <div className="flex items-center gap-3">
-            <h1 className="dash-title flex items-center gap-2">
-              Dashboard —
-              <select
-                className="bg-transparent border-b border-wedding-gold text-wedding-gold font-semibold cursor-pointer focus:outline-none"
-                value="trips"
-                onChange={(e) => {
-                  const path = e.target.value === 'trips' ? '/trips' : '/wedding'
-                  router.push(`${path}?year=${selectedYear}&month=${selectedMonth}`)
-                }}
-              >
-                <option value="trips" className="bg-bg-dark text-txt-dark">Trips</option>
-                <option value="wedding" className="bg-bg-dark text-txt-dark">WW</option>
-              </select>
-            </h1>
+            <BusinessToggle current="trips" year={selectedYear} month={selectedMonth} />
           </div>
           <div className="flex gap-3 items-center">
             <CleanupButton />

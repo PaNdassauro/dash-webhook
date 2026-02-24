@@ -16,6 +16,7 @@ interface FunnelTableProps {
   month?: number
   impressions?: number
   clicks?: number
+  isTotal?: boolean
 }
 
 const FUNNEL_COLUMNS = [
@@ -42,6 +43,11 @@ function isElopementTitle(title: string | null): boolean {
   return title.startsWith('EW')
 }
 
+// Helper to check if deal is Elopement (by is_elopement flag OR title)
+function isElopementDeal(d: { is_elopement?: boolean | null; title?: string | null }): boolean {
+  return d.is_elopement === true || isElopementTitle(d.title ?? null)
+}
+
 // Helper to check if a date falls within a specific month
 function isInMonth(dateStr: string | null, year: number, month: number): boolean {
   if (!dateStr) return false
@@ -62,6 +68,7 @@ export function FunnelTable({
   month = new Date().getMonth() + 1,
   impressions = 0,
   clicks = 0,
+  isTotal = false,
 }: FunnelTableProps) {
   const [modalOpen, setModalOpen] = useState(false)
   const [modalTitle, setModalTitle] = useState('')
@@ -80,10 +87,22 @@ export function FunnelTable({
     switch (stage) {
       case 'leads':
         // Leads must be created in the selected month
+        if (isTotal) {
+          // Total view: WW leads + Elopement leads
+          // WW leads: pipeline in LEADS_PIPELINES and NOT elopement
+          // Elopement leads: is_elopement=true OR title starts with 'EW'
+          return deals.filter(d =>
+            isCreatedInMonth(d) && (
+              (d.pipeline && LEADS_PIPELINES.includes(d.pipeline) && !isElopementDeal(d)) ||
+              isElopementDeal(d)
+            )
+          )
+        }
+        // WW only
         return deals.filter(d =>
           d.pipeline &&
           LEADS_PIPELINES.includes(d.pipeline) &&
-          !isElopementTitle(d.title) &&
+          !isElopementDeal(d) &&
           isCreatedInMonth(d)
         )
       case 'mql':
@@ -91,7 +110,7 @@ export function FunnelTable({
         return deals.filter(d =>
           d.pipeline &&
           MQL_PIPELINES.includes(d.pipeline) &&
-          !isElopementTitle(d.title) &&
+          !isElopementDeal(d) &&
           isCreatedInMonth(d)
         )
       case 'agendamento':
@@ -104,26 +123,39 @@ export function FunnelTable({
           d.como_reuniao_1 !== 'Não teve reunião'
         )
       case 'qualificado':
-        return deals.filter(d =>
-          isInMonth(d.data_qualificado, year, month) ||
-          d.qualificado_sql === true
-        )
+        return deals.filter(d => isInMonth(d.data_qualificado, year, month))
       case 'closerAgendada':
-        return deals.filter(d =>
-          isInMonth(d.data_closer, year, month) ||
-          (d.data_closer !== null && d.data_closer !== '')
-        )
+        return deals.filter(d => isInMonth(d.data_closer, year, month))
       case 'closerRealizada':
-        return deals.filter(d => d.reuniao_closer !== null && d.reuniao_closer !== '')
+        return deals.filter(d =>
+          isInMonth(d.data_closer, year, month) &&
+          d.reuniao_closer !== null &&
+          d.reuniao_closer !== ''
+        )
       case 'vendas':
-        return deals.filter(d => isInMonth(d.data_fechamento, year, month))
+        // In Total view, include both WW and Elopement vendas
+        // For vendas, just check data_fechamento
+        return deals.filter(d =>
+          isInMonth(d.data_fechamento, year, month) &&
+          (isTotal || !isElopementDeal(d))
+        )
       default:
         return []
     }
   }
 
   // Calculate actual metrics from deals (ensures table matches modal)
-  const actualMetrics: FunnelMetrics = {
+  // For Total view, use the pre-calculated metrics (sum of WW + Elopement) for leads and vendas
+  const actualMetrics: FunnelMetrics = isTotal ? {
+    leads: metrics.leads, // Use pre-calculated sum from Total page
+    mql: getDealsForStage('mql').length,
+    agendamento: getDealsForStage('agendamento').length,
+    reunioes: getDealsForStage('reunioes').length,
+    qualificado: getDealsForStage('qualificado').length,
+    closerAgendada: getDealsForStage('closerAgendada').length,
+    closerRealizada: getDealsForStage('closerRealizada').length,
+    vendas: metrics.vendas, // Use pre-calculated sum from Total page
+  } : {
     leads: getDealsForStage('leads').length,
     mql: getDealsForStage('mql').length,
     agendamento: getDealsForStage('agendamento').length,

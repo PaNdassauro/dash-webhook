@@ -8,13 +8,16 @@ import {
   MonthSelector,
   ViewToggle,
   CleanupButton,
+  BusinessToggle,
 } from '@/components/dashboard'
 import { getMonthProgress, calcAchievement } from '@/lib/utils'
 import {
   fetchDealsForMonth,
   calculateFunnelMetrics,
+  calculateElopementMetrics,
   fetchMonthlyTarget,
   fetchVendasForMonth,
+  fetchClosersForMonth,
   fetchMetaAdsSpend,
   fetchGoogleAdsSpend,
 } from '@/lib/queries'
@@ -93,11 +96,12 @@ function TotalDashboardContent() {
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      // Fetch both wedding and elopement data + vendas + Meta Ads + Google Ads
+      // Fetch both wedding and elopement data + vendas + closers + Meta Ads + Google Ads
       const [
         weddingDeals, elopementDeals,
         weddingTarget, elopementTarget,
         weddingVendas, elopementVendas,
+        weddingClosers,
         weddingMetaAds, googleAds
       ] = await Promise.all([
         fetchDealsForMonth(selectedYear, selectedMonth, 'wedding'),
@@ -106,20 +110,23 @@ function TotalDashboardContent() {
         fetchMonthlyTarget(selectedYear, selectedMonth, 'elopement'),
         fetchVendasForMonth(selectedYear, selectedMonth, 'wedding'),
         fetchVendasForMonth(selectedYear, selectedMonth, 'elopement'),
+        fetchClosersForMonth(selectedYear, selectedMonth, 'wedding'),
         fetchMetaAdsSpend(selectedYear, selectedMonth, 'wedding'),
         fetchGoogleAdsSpend(selectedYear, selectedMonth),
       ])
 
       // Combine all deals (deduplicated)
       const allDealsMap = new Map<number, import('@/lib/types').Deal>()
-      ;[...weddingDeals, ...elopementDeals, ...weddingVendas.deals, ...elopementVendas.deals]
+      ;[...weddingDeals, ...elopementDeals, ...weddingVendas.deals, ...elopementVendas.deals, ...weddingClosers.deals]
         .forEach(d => allDealsMap.set(d.id, d))
       setDeals(Array.from(allDealsMap.values()))
 
-      // Combine wedding deals with vendas deals (deduplicated)
+      // Combine wedding deals with vendas and closer deals (deduplicated)
+      const weddingIds = new Set(weddingDeals.map(d => d.id))
       const allWeddingDeals = [
         ...weddingDeals,
-        ...weddingVendas.deals.filter(d => !weddingDeals.some(wd => wd.id === d.id))
+        ...weddingVendas.deals.filter(d => !weddingIds.has(d.id)),
+        ...weddingClosers.deals.filter(d => !weddingIds.has(d.id) && !weddingVendas.deals.some(vd => vd.id === d.id))
       ]
       const allElopementDeals = [
         ...elopementDeals,
@@ -131,8 +138,9 @@ function TotalDashboardContent() {
         ...calculateFunnelMetrics(allWeddingDeals, selectedYear, selectedMonth),
         vendas: weddingVendas.count,
       }
+      // Use calculateElopementMetrics for elopement (simpler logic - all deals created in month)
       const elopementMetrics = {
-        ...calculateFunnelMetrics(allElopementDeals, selectedYear, selectedMonth),
+        ...calculateElopementMetrics(allElopementDeals, selectedYear, selectedMonth),
         vendas: elopementVendas.count,
       }
 
@@ -152,17 +160,20 @@ function TotalDashboardContent() {
         prevYear = selectedYear - 1
       }
 
-      const [prevWedding, prevElopement, prevWeddingVendas, prevElopementVendas] = await Promise.all([
+      const [prevWedding, prevElopement, prevWeddingVendas, prevElopementVendas, prevWeddingClosers] = await Promise.all([
         fetchDealsForMonth(prevYear, prevMonth, 'wedding'),
         fetchDealsForMonth(prevYear, prevMonth, 'elopement'),
         fetchVendasForMonth(prevYear, prevMonth, 'wedding'),
         fetchVendasForMonth(prevYear, prevMonth, 'elopement'),
+        fetchClosersForMonth(prevYear, prevMonth, 'wedding'),
       ])
 
-      // Combine previous month deals with vendas deals
+      // Combine previous month deals with vendas and closer deals
+      const prevWeddingIds = new Set(prevWedding.map(d => d.id))
       const allPrevWedding = [
         ...prevWedding,
-        ...prevWeddingVendas.deals.filter(d => !prevWedding.some(wd => wd.id === d.id))
+        ...prevWeddingVendas.deals.filter(d => !prevWeddingIds.has(d.id)),
+        ...prevWeddingClosers.deals.filter(d => !prevWeddingIds.has(d.id) && !prevWeddingVendas.deals.some(vd => vd.id === d.id))
       ]
       const allPrevElopement = [
         ...prevElopement,
@@ -171,7 +182,7 @@ function TotalDashboardContent() {
 
       setPreviousMetrics(mergeMetrics(
         { ...calculateFunnelMetrics(allPrevWedding, prevYear, prevMonth), vendas: prevWeddingVendas.count },
-        { ...calculateFunnelMetrics(allPrevElopement, prevYear, prevMonth), vendas: prevElopementVendas.count }
+        { ...calculateElopementMetrics(allPrevElopement, prevYear, prevMonth), vendas: prevElopementVendas.count }
       ))
     } catch (error) {
       console.error('Error loading data:', error)
@@ -196,12 +207,10 @@ function TotalDashboardContent() {
         {/* Header */}
         <div className="dash-header">
           <div className="flex items-center gap-3">
-            <h1 className="dash-title">
-              Dashboard — Total
-            </h1>
+            <BusinessToggle current="ww" year={selectedYear} month={selectedMonth} />
             <span className="text-xs font-medium px-2.5 py-1 rounded-full
               bg-wedding-gold/10 text-wedding-gold border border-wedding-gold/20">
-              WW + Elopement
+              Total (WW + Elopement)
             </span>
           </div>
           <div className="flex gap-3 items-center">
@@ -241,6 +250,7 @@ function TotalDashboardContent() {
                 month={selectedMonth}
                 impressions={totalImpressions}
                 clicks={totalClicks}
+                isTotal={true}
               />
             )}
           </div>

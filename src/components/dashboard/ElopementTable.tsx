@@ -38,14 +38,20 @@ export function ElopementTable({
   const [modalOpen, setModalOpen] = useState(false)
   const [modalTitle, setModalTitle] = useState('')
   const [modalDeals, setModalDeals] = useState<Deal[]>([])
+  const [modalStageKey, setModalStageKey] = useState<StageKey>('leads')
 
-  const cvr = calcConversionRate(metrics.leads, metrics.vendas)
+  // Helper to check if deal was created in the selected month
+  const isCreatedInMonth = (d: Deal): boolean => {
+    if (!d.created_at) return false
+    const date = new Date(d.created_at)
+    return date.getFullYear() === year && date.getMonth() + 1 === month
+  }
 
-  // Filter deals by stage
+  // Filter deals by stage - these are the deals that will appear in modal
   const getDealsForStage = (stage: StageKey): Deal[] => {
     switch (stage) {
       case 'leads':
-        return deals
+        return deals.filter(d => isCreatedInMonth(d))
       case 'vendas':
         return deals.filter(d => isInMonth(d.data_fechamento, year, month))
       default:
@@ -53,10 +59,19 @@ export function ElopementTable({
     }
   }
 
+  // Calculate actual metrics from deals (ensures table matches modal)
+  const actualMetrics = {
+    leads: getDealsForStage('leads').length,
+    vendas: getDealsForStage('vendas').length,
+  }
+
+  const cvr = calcConversionRate(actualMetrics.leads, actualMetrics.vendas)
+
   const handleStageClick = (stage: StageKey, title: string) => {
     if (!deals.length) return
     setModalTitle(title)
     setModalDeals(getDealsForStage(stage))
+    setModalStageKey(stage)
     setModalOpen(true)
   }
 
@@ -82,14 +97,14 @@ export function ElopementTable({
     },
     {
       label: 'Realizado',
-      data: [metrics.leads, metrics.vendas, formatPercent(cvr), '50'],
+      data: [actualMetrics.leads, actualMetrics.vendas, formatPercent(cvr), '50'],
       className: 'row-realizado',
     },
     {
       label: 'Atingimento (%)',
       data: [
-        formatPercent(calcAchievement(metrics.leads, shouldBeLeads) - 100),
-        formatPercent(calcAchievement(metrics.vendas, shouldBeVendas) - 100),
+        formatPercent(calcAchievement(actualMetrics.leads, shouldBeLeads) - 100),
+        formatPercent(calcAchievement(actualMetrics.vendas, shouldBeVendas) - 100),
         '—',
         '—',
       ],
@@ -150,6 +165,7 @@ export function ElopementTable({
         onClose={() => setModalOpen(false)}
         title={modalTitle}
         deals={modalDeals}
+        stageKey={modalStageKey}
       />
     </>
   )

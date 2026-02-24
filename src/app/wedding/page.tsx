@@ -8,6 +8,7 @@ import {
   MonthSelector,
   ViewToggle,
   CleanupButton,
+  BusinessToggle,
 } from '@/components/dashboard'
 import { getMonthProgress, calcAchievement } from '@/lib/utils'
 import {
@@ -16,6 +17,7 @@ import {
   fetchMonthlyTarget,
   fetchPreviousMonthMetrics,
   fetchVendasForMonth,
+  fetchClosersForMonth,
   fetchMetaAdsSpend,
   fetchGoogleAdsSpend,
 } from '@/lib/queries'
@@ -61,19 +63,22 @@ function WeddingDashboardContent() {
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      const [fetchedDeals, targetData, prevMetrics, vendasData, metaAds, googleAds] = await Promise.all([
+      const [fetchedDeals, targetData, prevMetrics, vendasData, closersData, metaAds, googleAds] = await Promise.all([
         fetchDealsForMonth(selectedYear, selectedMonth, 'wedding'),
         fetchMonthlyTarget(selectedYear, selectedMonth, 'wedding'),
         fetchPreviousMonthMetrics(selectedYear, selectedMonth, 'wedding'),
         fetchVendasForMonth(selectedYear, selectedMonth, 'wedding'),
+        fetchClosersForMonth(selectedYear, selectedMonth, 'wedding'),
         fetchMetaAdsSpend(selectedYear, selectedMonth, 'wedding'),
         fetchGoogleAdsSpend(selectedYear, selectedMonth),
       ])
 
-      // Combine deals: created_at deals + vendas deals (deduplicated)
+      // Combine deals: created_at deals + vendas deals + closer deals (deduplicated)
+      const existingIds = new Set(fetchedDeals.map(d => d.id))
       const allDeals = [
         ...fetchedDeals,
-        ...vendasData.deals.filter(d => !fetchedDeals.some(fd => fd.id === d.id))
+        ...vendasData.deals.filter(d => !existingIds.has(d.id)),
+        ...closersData.deals.filter(d => !existingIds.has(d.id) && !vendasData.deals.some(vd => vd.id === d.id))
       ]
       setDeals(allDeals)
 
@@ -110,20 +115,7 @@ function WeddingDashboardContent() {
         {/* Header */}
         <div className="dash-header">
           <div className="flex items-center gap-3">
-            <h1 className="dash-title flex items-center gap-2">
-              Dashboard —
-              <select
-                className="bg-transparent border-b border-wedding-gold text-wedding-gold font-semibold cursor-pointer focus:outline-none"
-                value="wedding"
-                onChange={(e) => {
-                  const path = e.target.value === 'trips' ? '/trips' : '/wedding'
-                  router.push(`${path}?year=${selectedYear}&month=${selectedMonth}`)
-                }}
-              >
-                <option value="wedding" className="bg-bg-dark text-txt-dark">WW</option>
-                <option value="trips" className="bg-bg-dark text-txt-dark">Trips</option>
-              </select>
-            </h1>
+            <BusinessToggle current="ww" year={selectedYear} month={selectedMonth} />
           </div>
           <div className="flex gap-3 items-center">
             <CleanupButton />

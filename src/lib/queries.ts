@@ -115,21 +115,69 @@ export function calculateFunnelMetrics(deals: Deal[], year: number, month: numbe
       d.como_reuniao_1 !== '' &&
       d.como_reuniao_1 !== 'Não teve reunião'
     ).length,
-    // Qualificado: data_qualificado in month OR qualificado_sql = true
-    qualificado: allWwDeals.filter(d =>
-      isInMonth(d.data_qualificado, year, month) ||
-      d.qualificado_sql === true
+    // Qualificado: data_qualificado in month
+    qualificado: allWwDeals.filter(d => isInMonth(d.data_qualificado, year, month)).length,
+    // Closer Agendada: data_closer falls within the selected month
+    closerAgendada: allWwDeals.filter(d => isInMonth(d.data_closer, year, month)).length,
+    // Closer Realizada: data_closer in month + reuniao_closer filled
+    closerRealizada: allWwDeals.filter(d =>
+      isInMonth(d.data_closer, year, month) &&
+      d.reuniao_closer !== null &&
+      d.reuniao_closer !== ''
     ).length,
-    // Closer Agendada: data_closer falls within the selected month OR deal created in month has data_closer filled
-    closerAgendada: allWwDeals.filter(d =>
-      isInMonth(d.data_closer, year, month) ||
-      (d.data_closer !== null && d.data_closer !== '')
-    ).length,
-    // Closer Realizada: field 299 "WW | Como foi feita Reunião Closer" is filled
-    closerRealizada: allWwDeals.filter(d => d.reuniao_closer !== null && d.reuniao_closer !== '').length,
     // Venda: data_fechamento falls within the selected month (can be from other months)
     vendas: allWwDeals.filter(d => isInMonth(d.data_fechamento, year, month)).length,
   }
+}
+
+// Calculate Elopement funnel metrics (simpler: just leads and vendas)
+export function calculateElopementMetrics(deals: Deal[], year: number, month: number): FunnelMetrics {
+  // Elopement leads: all deals created in month (no pipeline filter)
+  const leadsCount = deals.filter(d => isCreatedInMonth(d, year, month)).length
+
+  // Elopement vendas: data_fechamento in month
+  const vendasCount = deals.filter(d => isInMonth(d.data_fechamento, year, month)).length
+
+  return {
+    leads: leadsCount,
+    mql: 0,
+    agendamento: 0,
+    reunioes: 0,
+    qualificado: 0,
+    closerAgendada: 0,
+    closerRealizada: 0,
+    vendas: vendasCount,
+  }
+}
+
+// Fetch deals with data_closer in the selected month (not created_at)
+export async function fetchClosersForMonth(
+  year: number,
+  month: number,
+  viewType: ViewType
+): Promise<{ count: number; deals: Deal[] }> {
+  const startDate = `${year}-${String(month).padStart(2, '0')}-01`
+  const endMonth = month === 12 ? 1 : month + 1
+  const endYear = month === 12 ? year + 1 : year
+  const endDate = `${endYear}-${String(endMonth).padStart(2, '0')}-01`
+
+  if (viewType === 'elopement') {
+    return { count: 0, deals: [] } // Elopement doesn't track closers
+  }
+
+  const { data, error } = await supabase
+    .from('deals')
+    .select('*')
+    .gte('data_closer', startDate)
+    .lt('data_closer', endDate)
+    .eq('is_elopement', false)
+    .not('title', 'ilike', 'EW%')
+
+  if (error) {
+    console.error('Error fetching closers:', error)
+    return { count: 0, deals: [] }
+  }
+  return { count: data?.length || 0, deals: data as Deal[] }
 }
 
 // Fetch vendas count based on data_fechamento (not created_at)
@@ -211,8 +259,22 @@ export async function fetchPreviousMonthMetrics(
     prevYear = year - 1
   }
 
-  const deals = await fetchDealsForMonth(prevYear, prevMonth, viewType)
-  return calculateFunnelMetrics(deals, prevYear, prevMonth)
+  const [deals, vendasData, closersData] = await Promise.all([
+    fetchDealsForMonth(prevYear, prevMonth, viewType),
+    fetchVendasForMonth(prevYear, prevMonth, viewType),
+    fetchClosersForMonth(prevYear, prevMonth, viewType),
+  ])
+
+  // Combine deals with vendas and closer deals (deduplicated)
+  const existingIds = new Set(deals.map(d => d.id))
+  const allDeals = [
+    ...deals,
+    ...vendasData.deals.filter(d => !existingIds.has(d.id)),
+    ...closersData.deals.filter(d => !existingIds.has(d.id) && !vendasData.deals.some(vd => vd.id === d.id))
+  ]
+
+  const metrics = calculateFunnelMetrics(allDeals, prevYear, prevMonth)
+  return { ...metrics, vendas: vendasData.count }
 }
 
 // Get all available months with data

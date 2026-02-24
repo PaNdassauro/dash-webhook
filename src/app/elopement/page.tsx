@@ -8,6 +8,7 @@ import {
   MonthSelector,
   ViewToggle,
   CleanupButton,
+  BusinessToggle,
 } from '@/components/dashboard'
 import { getMonthProgress, calcAchievement } from '@/lib/utils'
 import {
@@ -98,9 +99,11 @@ function ElopementDashboardContent() {
         {/* Header */}
         <div className="dash-header">
           <div className="flex items-center gap-3">
-            <h1 className="dash-title">
-              Dashboard — Elopement Wedding
-            </h1>
+            <BusinessToggle current="ww" year={selectedYear} month={selectedMonth} />
+            <span className="text-xs font-medium px-2.5 py-1 rounded-full
+              bg-wedding-gold/10 text-wedding-gold border border-wedding-gold/20">
+              Elopement
+            </span>
           </div>
           <div className="flex gap-3 items-center">
             <CleanupButton />

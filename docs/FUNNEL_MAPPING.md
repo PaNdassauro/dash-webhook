@@ -26,6 +26,11 @@ Um deal é considerado **Elopement** se:
 |---------|-----------|----------------|------------------|
 | **Leads (WW)** | 1, 3, 4, 17, 31 | Criado no mês | Excluir EW |
 | **MQL** | 1, 3, 4 apenas | Criado no mês | Excluir EW |
+| **Agendamento** | - | data_reuniao_1 no mês | Excluir EW |
+| **Reunião** | - | data_reuniao_1 no mês + como_reuniao_1 preenchido | Excluir EW |
+| **Qualificado** | - | data_qualificado no mês | Excluir EW |
+| **Closer Agendada** | - | data_closer no mês | Excluir EW |
+| **Closer Realizada** | - | data_closer no mês + reuniao_closer preenchido | Excluir EW |
 | **Vendas (WW)** | - | data_fechamento no mês | Excluir EW |
 | **Leads (Elopement)** | 12 OU título EW | Criado no mês | - |
 | **Vendas (Elopement)** | 12 OU título EW | data_fechamento no mês | - |
@@ -55,12 +60,12 @@ Lead → MQL → Agendamento → Reunião → Qualificado → Closer Agendada �
 |---|-------|-------------|-------------|-----------|-------|
 | 1 | **Lead** | Deal created | - | `created_at` | Created in month + Pipeline IN (1, 3, 4, 17, 31) + Title NOT starts with EW |
 | 2 | **MQL** | Pipeline | - | `pipeline` | Created in month + Pipeline IN (1, 3, 4) only + Title NOT starts with EW |
-| 3 | **Agendamento** | `Data e horário do agendamento da 1ª reunião` | 6 | `data_reuniao_1` | Date falls within selected month |
-| 4 | **Reunião** | `Como foi feita a 1ª reunião?` | 17 | `como_reuniao_1` | Agendamento in month + filled + != "Não teve reunião" |
-| 5 | **Qualificado** | `Automático - WW - Data Qualificação SDR` + `Qualificado para SQL` | 93 / 169 | `data_qualificado` / `qualificado_sql` | Date in month OR sql = true |
-| 6 | **Closer Agendada** | `Data e horário do agendamento com a Closer:` | 18 | `data_closer` | Date in month OR (created in month + field filled) |
-| 7 | **Closer Realizada** | `WW \| Como foi feita Reunião Closer` | 299 | `reuniao_closer` | Field is filled |
-| 8 | **Venda** | `[WW] [Closer] Data-Hora Ganho` | 87 | `data_fechamento` | data_fechamento in month (pode ser lead criado em outro mês) |
+| 3 | **Agendamento** | `Data e horário do agendamento da 1ª reunião` | 6 | `data_reuniao_1` | data_reuniao_1 in month |
+| 4 | **Reunião** | `Como foi feita a 1ª reunião?` | 17 | `como_reuniao_1` | data_reuniao_1 in month + como_reuniao_1 filled + != "Não teve reunião" |
+| 5 | **Qualificado** | `Automático - WW - Data Qualificação SDR` | 93 | `data_qualificado` | data_qualificado in month |
+| 6 | **Closer Agendada** | `Data e horário do agendamento com a Closer:` | 18 | `data_closer` | data_closer in month |
+| 7 | **Closer Realizada** | `WW \| Como foi feita Reunião Closer` | 299 | `reuniao_closer` | data_closer in month + reuniao_closer filled |
+| 8 | **Venda** | `[WW] [Closer] Data-Hora Ganho` | 87 | `data_fechamento` | data_fechamento in month |
 
 ---
 
